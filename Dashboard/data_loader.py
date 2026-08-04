@@ -59,6 +59,18 @@ def destinations_for_type(df, type_, exclude_total=True):
     return dests
 
 
+def types_traded(df, destination):
+    """Which of Arabica/Robusta actually have reported exports to this destination
+    (e.g. China is Arabica-only, Colombia is Robusta-only) — used to flag when a
+    Arabica/Robusta mix comparison isn't meaningful for a given destination."""
+    if destination == EUROPE_LABEL:
+        mask = df["Destination"].isin(EUROPE_MEMBERS)
+    else:
+        mask = df["Destination"] == destination
+    sub = df[mask & df["Bags (K)"].notna()]
+    return sorted(sub["Type"].unique())
+
+
 def year_columns(df_wide):
     return [c for c in df_wide.columns if c != "Period"]
 

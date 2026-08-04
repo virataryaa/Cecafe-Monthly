@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-from data_loader import (load_raw, types, destinations_for_type, year_columns,
+from data_loader import (load_raw, types, destinations_for_type, types_traded, year_columns,
                           flow_wide, proportion_wide, compare_wide, get_crop_years,
                           destination_mix, destination_month_matrix, long_run_series,
                           robusta_share_series, DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
@@ -277,10 +277,16 @@ with tab_insights:
     )
     mix_dest_options = destinations_for_type(df, ALL_TYPES) + [EUROPE_LABEL, TOTAL]
     mix_dest = st.selectbox("Destination", mix_dest_options, key="insights_mix_dest")
-    share = robusta_share_series(df, mix_dest)
-    share_windowed = [(y, v) for y, v in share if y in range_years]
-    st.plotly_chart(
-        share_line([y for y, _ in share_windowed], [v for _, v in share_windowed],
-                   f"Robusta Share of Combined Exports to {mix_dest} ({range_caption})", height=PANEL_H),
-        use_container_width=True,
-    )
+    traded = types_traded(df, mix_dest)
+    if len(traded) < 2:
+        only = traded[0] if traded else "no"
+        st.info(f"{mix_dest} only receives {only} exports in this dataset — "
+                f"there's no Arabica/Robusta mix to show here.")
+    else:
+        share = robusta_share_series(df, mix_dest)
+        share_windowed = [(y, v) for y, v in share if y in range_years]
+        st.plotly_chart(
+            share_line([y for y, _ in share_windowed], [v for _, v in share_windowed],
+                       f"Robusta Share of Combined Exports to {mix_dest} ({range_caption})", height=PANEL_H),
+            use_container_width=True,
+        )
