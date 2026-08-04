@@ -41,6 +41,16 @@ def destinations(df, exclude_total=True):
     return dests
 
 
+def destinations_for_type(df, type_, exclude_total=True):
+    """Destinations that actually have at least one reported month for this Type
+    (e.g. Arabica never ships to Vietnam, Robusta never ships to China)."""
+    sub = df[(df["Type"] == type_) & df["Bags (K)"].notna()]
+    dests = sorted(sub["Destination"].unique())
+    if exclude_total:
+        dests = [d for d in dests if d != TOTAL]
+    return dests
+
+
 def year_columns(df_wide):
     return [c for c in df_wide.columns if c != "Period"]
 
