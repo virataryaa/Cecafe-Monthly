@@ -11,7 +11,7 @@ from data_loader import (load_raw, types, destinations_for_type, year_columns,
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, share_line)
-from table_html import raw_table_html, summary_table_html, overview_table_html
+from table_html import seasonal_table_html, summary_table_html, overview_table_html
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
 
@@ -125,16 +125,24 @@ def render_single(type_, destination):
                          use_container_width=True)
 
     st.markdown(
-        raw_table_html(df_wide, year_cols, title=f"{lbl} Exports to {destination}", unit=unit, kind="flow"),
+        seasonal_table_html(df_wide, year_cols, title=f"{lbl} Exports to {destination}", unit=unit, kind="flow"),
         unsafe_allow_html=True,
     )
 
     if destination != TOTAL:
         prop_wide = proportion_wide(df, type_, destination)
         prop_year_cols = year_columns(prop_wide)
+        total_wide = flow_wide(df, type_, TOTAL)
+        # Properly volume-weighted YTD% (sum of dest / sum of total), not an
+        # average of the monthly percentages.
+        weighted_ytd = pd.Series({
+            y: (df_wide[y].sum(skipna=True) / total_wide[y].sum(skipna=True) * 100)
+            for y in prop_year_cols if total_wide[y].sum(skipna=True)
+        })
         st.markdown(
-            raw_table_html(prop_wide, prop_year_cols,
-                            title=f"{destination} — Share of Total {lbl} Exports", unit="%", kind="ratio"),
+            seasonal_table_html(prop_wide, prop_year_cols,
+                                 title=f"{destination} — Share of Total {lbl} Exports", unit="%", kind="ratio",
+                                 summary_series=weighted_ytd, summary_label="YTD %"),
             unsafe_allow_html=True,
         )
 

@@ -151,62 +151,68 @@ def overview_table_html(rows, title, prev_year, current_year):
     """)
 
 
-def raw_table_html(df_wide, year_cols, title, unit="", kind="flow"):
-    body = df_wide[year_cols]
-    vmin = body.min(numeric_only=True).min()
-    vmax = body.max(numeric_only=True).max()
+def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
+                         summary_series=None, summary_label="YTD"):
+    """Crop-year x month heatmap table (crop years as rows, Jul->Jun as columns) —
+    matches the original Excel seasonal layout. df_wide is Period-rows/CropYear-columns
+    (as produced by flow_wide/proportion_wide); this transposes it for display.
+
+    summary_series, if given, is a Series indexed by crop year supplying the right-hand
+    summary column (e.g. a properly volume-weighted proportion); otherwise it defaults
+    to a row sum (kind="flow") or row mean (kind="ratio")."""
+    periods = df_wide["Period"].tolist()
+    mat = df_wide.set_index("Period")[year_cols].T  # rows=crop year, columns=Period
+
+    if summary_series is None:
+        summary_series = mat.sum(axis=1, skipna=True) if kind == "flow" else mat.mean(axis=1, skipna=True)
+    summary_yoy = summary_series.pct_change(fill_method=None) * 100
+
+    vmin = mat.min(numeric_only=True).min()
+    vmax = mat.max(numeric_only=True).max()
     span = (vmax - vmin) or 1
 
-    current_year, prev_year = year_cols[-1], year_cols[-2]
-    yoy = (df_wide[current_year] - df_wide[prev_year]) / df_wide[prev_year] * 100
-    hist_avg = df_wide[year_cols[:-1]].mean(axis=1, skipna=True)
-    chg_avg = (df_wide[current_year] - hist_avg) / hist_avg * 100
-
     heading = f"{title} (in {unit})" if unit else title
+    header_cells = "".join(f"<th>{p}</th>" for p in periods)
 
-    header_cells = "".join(f"<th>{y}</th>" for y in year_cols)
     rows_html = []
-    for _, row in df_wide.iterrows():
-        cells = [f'<td class="period-col">{row["Period"]}</td>']
-        for y in year_cols:
-            v = row[y]
+    for yr in mat.index:
+        cells = [f'<td class="period-col">{yr}</td>']
+        for p in periods:
+            v = mat.loc[yr, p]
             if pd.isna(v):
                 cells.append('<td></td>')
                 continue
             t = (v - vmin) / span
             bg, txt = _green_shade(t)
-            cells.append(
-                f'<td style="background:{bg};color:{txt};">{_fmt(v, unit)}</td>'
-            )
-        idx = row.name
-        cells.append(f'<td class="bar-cell">{_bar_cell(yoy.loc[idx])}</td>')
-        cells.append(f'<td class="bar-cell">{_bar_cell(chg_avg.loc[idx])}</td>')
-        rows_html.append("<tr>" + "".join(cells) + "</tr>")
+            cells.append(f'<td style="background:{bg};color:{txt};">{_fmt(v, unit)}</td>')
+        s = summary_series.get(yr)
+        s_cell = f'<td style="font-weight:600;">{_fmt(s, unit)}</td>' if pd.notna(s) else '<td></td>'
+        yoy_cell = f'<td class="bar-cell">{_bar_cell(summary_yoy.get(yr))}</td>'
+        rows_html.append("<tr>" + "".join(cells) + s_cell + yoy_cell + "</tr>")
 
-    summary_label = "Total" if kind == "flow" else "Average"
-    summaries = []
-    for y in year_cols:
-        col = df_wide[y]
-        is_current_year = y == current_year
-        if is_current_year and col.isna().any():
-            summaries.append(None)
-        elif kind == "flow":
-            summaries.append(col.sum(skipna=True))
-        else:
-            summaries.append(col.mean(skipna=True))
-    summary_cells = f'<td class="period-col">{summary_label}</td>' + "".join(
-        f'<td>{_fmt(v, unit)}</td>' if v is not None else '<td></td>' for v in summaries
-    ) + '<td></td><td></td>'
+    if len(mat) >= 2:
+        yoy_row = (mat.iloc[-1] - mat.iloc[-2]) / mat.iloc[-2] * 100
+    else:
+        yoy_row = pd.Series(index=periods, dtype=float)
+    lta_avg_row = mat.mean(axis=0, skipna=True)
+
+    yoy_row_cells = "".join(
+        f'<td>{yoy_row[p]:+.0f}%</td>' if pd.notna(yoy_row.get(p)) else '<td></td>' for p in periods
+    )
+    lta_row_cells = "".join(
+        f'<td>{_fmt(lta_avg_row[p], unit)}</td>' if pd.notna(lta_avg_row.get(p)) else '<td></td>' for p in periods
+    )
 
     html = f"""
     {_STYLE}
     <div class="unica-table-wrap">
     <table class="unica-table">
       <caption>{heading}</caption>
-      <thead><tr><th class="period-col">Upto</th>{header_cells}<th>YoY</th><th>Chg w.r.t Avg</th></tr></thead>
+      <thead><tr><th class="period-col">Crop Year</th>{header_cells}<th>{summary_label}</th><th>YoY</th></tr></thead>
       <tbody>
         {''.join(rows_html)}
-        <tr class="total-row">{summary_cells}</tr>
+        <tr class="total-row"><td class="period-col">YoY</td>{yoy_row_cells}<td></td><td></td></tr>
+        <tr class="total-row"><td class="period-col">LTA Avg</td>{lta_row_cells}<td></td><td></td></tr>
       </tbody>
     </table>
     </div>
