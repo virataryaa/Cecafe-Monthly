@@ -10,7 +10,8 @@ MONTH_NAMES = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
                7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
 PERIOD_ORDER = [MONTH_NAMES[m] for m in MONTH_ORDER]
 
-TOTAL = "Total"
+TOTAL = "Total"        # Destination value meaning "all destinations"
+ALL_TYPES = "Total"    # Type value meaning "Arabica + Robusta combined"
 
 
 def _crop_start(year, month):
@@ -31,7 +32,7 @@ def load_raw():
 
 
 def types(df):
-    return sorted(df["Type"].unique())
+    return sorted(df["Type"].unique()) + [ALL_TYPES]
 
 
 def destinations(df, exclude_total=True):
@@ -43,8 +44,12 @@ def destinations(df, exclude_total=True):
 
 def destinations_for_type(df, type_, exclude_total=True):
     """Destinations that actually have at least one reported month for this Type
-    (e.g. Arabica never ships to Vietnam, Robusta never ships to China)."""
-    sub = df[(df["Type"] == type_) & df["Bags (K)"].notna()]
+    (e.g. Arabica never ships to Vietnam, Robusta never ships to China).
+    For ALL_TYPES ("Total"), it's the union across both types."""
+    if type_ == ALL_TYPES:
+        sub = df[df["Bags (K)"].notna()]
+    else:
+        sub = df[(df["Type"] == type_) & df["Bags (K)"].notna()]
     dests = sorted(sub["Destination"].unique())
     if exclude_total:
         dests = [d for d in dests if d != TOTAL]
@@ -56,7 +61,7 @@ def year_columns(df_wide):
 
 
 def _crop_year_order(df, type_=None):
-    sub = df if type_ is None else df[df["Type"] == type_]
+    sub = df if type_ in (None, ALL_TYPES) else df[df["Type"] == type_]
     return (sub[["CropStart", "CropYear"]]
             .drop_duplicates()
             .sort_values("CropStart")["CropYear"]
@@ -66,8 +71,12 @@ def _crop_year_order(df, type_=None):
 def _pivot(df, type_, destination):
     """Always reindexed to every crop year that exists for this Type (not just
     the ones this destination happens to have rows for), so every destination's
-    wide table shares identical columns and lines up in the Overview comparison."""
-    sub = df[(df["Type"] == type_) & (df["Destination"] == destination)]
+    wide table shares identical columns and lines up across destinations.
+    type_ == ALL_TYPES sums Arabica + Robusta together (no Type filter)."""
+    if type_ == ALL_TYPES:
+        sub = df[df["Destination"] == destination]
+    else:
+        sub = df[(df["Type"] == type_) & (df["Destination"] == destination)]
     pivot = sub.pivot_table(index="Period", columns="CropYear", values="Bags (K)", aggfunc="sum")
     pivot = pivot.reindex(PERIOD_ORDER)
     full_years = _crop_year_order(df, type_)
