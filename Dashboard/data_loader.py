@@ -55,19 +55,23 @@ def year_columns(df_wide):
     return [c for c in df_wide.columns if c != "Period"]
 
 
-def _crop_year_order(df):
-    return (df[["CropStart", "CropYear"]]
+def _crop_year_order(df, type_=None):
+    sub = df if type_ is None else df[df["Type"] == type_]
+    return (sub[["CropStart", "CropYear"]]
             .drop_duplicates()
             .sort_values("CropStart")["CropYear"]
             .tolist())
 
 
 def _pivot(df, type_, destination):
+    """Always reindexed to every crop year that exists for this Type (not just
+    the ones this destination happens to have rows for), so every destination's
+    wide table shares identical columns and lines up in the Overview comparison."""
     sub = df[(df["Type"] == type_) & (df["Destination"] == destination)]
     pivot = sub.pivot_table(index="Period", columns="CropYear", values="Bags (K)", aggfunc="sum")
     pivot = pivot.reindex(PERIOD_ORDER)
-    ordered_cols = [c for c in _crop_year_order(df) if c in pivot.columns]
-    pivot = pivot[ordered_cols].reset_index()
+    full_years = _crop_year_order(df, type_)
+    pivot = pivot.reindex(columns=full_years).reset_index()
     return pivot
 
 
