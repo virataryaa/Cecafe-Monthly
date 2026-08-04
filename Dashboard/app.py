@@ -55,6 +55,12 @@ div[data-testid="stMultiSelect"] div[data-baseweb="select"] {
     letter-spacing: 0.06em;
     margin: 16px 0 8px;
 }
+.card-desc {
+    font-size: 12px;
+    color: #898781;
+    margin: -4px 0 10px;
+    line-height: 1.4;
+}
 
 button[data-baseweb="tab"] p { font-size: 13px !important; font-weight: 600; }
 </style>
@@ -263,6 +269,12 @@ with tab_insights:
     )
 
     st.markdown('<div class="section-label">Arabica / Robusta Mix</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Robusta bags &divide; (Arabica bags + Robusta bags) &times; 100, '
+        'summing full crop-year (Jul&ndash;Jun) totals for the selected destination — i.e. what share '
+        'of that destination\'s combined coffee imports from Brazil was Robusta rather than Arabica.</div>',
+        unsafe_allow_html=True,
+    )
     mix_dest_options = destinations_for_type(df, ALL_TYPES) + [EUROPE_LABEL, TOTAL]
     mix_dest = st.selectbox("Destination", mix_dest_options, key="insights_mix_dest")
     share = robusta_share_series(df, mix_dest)

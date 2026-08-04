@@ -429,11 +429,15 @@ def destination_heatmap(matrix_df, title, height=None):
         z=z, x=matrix_df.columns.tolist(), y=matrix_df.index.tolist(),
         colorscale=[[0, "#eafaf0"], [1, "#0a6e42"]],
         text=[[f"{v:,.0f}" if pd.notna(v) else "" for v in row] for row in z],
-        texttemplate="%{text}", textfont=dict(size=10),
+        texttemplate="%{text}", textfont=dict(size=10, color=INK),
         colorbar=dict(title=""),
     ))
     layout = _layout(title, height)
     layout["xaxis"]["side"] = "top"
+    # The month labels sit at the top of the plot (side="top"), right where the
+    # title also lives — give them separate rows instead of overlapping.
+    layout["margin"]["t"] = 90
+    layout["title"]["y"] = 0.98
     fig.update_layout(**layout)
     return fig
 
