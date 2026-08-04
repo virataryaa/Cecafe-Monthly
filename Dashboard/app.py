@@ -121,9 +121,9 @@ def render_single(type_, destination):
         table, period_label = summary_table(df_wide, year_cols, "flow")
         st.markdown(summary_table_html(table, period_label, unit), unsafe_allow_html=True)
     with bottom_cols[1]:
-        # Match the bar chart's height to the HTML table's rendered height
-        # (roughly header + one row per crop year) instead of a fixed value.
-        table_height = 60 + 38 * len(year_cols)
+        # Match the bar chart's height to the compact HTML table's rendered
+        # height (~22px header + ~18px per crop-year row) instead of a fixed value.
+        table_height = 24 + 18 * len(year_cols)
         st.plotly_chart(ytd_comparison(df_wide, year_cols, kind="flow", height=table_height),
                          use_container_width=True)
 

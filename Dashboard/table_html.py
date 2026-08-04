@@ -43,11 +43,11 @@ _STYLE = f"""
                 font-family: system-ui, -apple-system, Segoe UI, sans-serif; }}
 .unica-table caption {{ text-align: left; font-weight: 700; font-size: 13px;
                          padding: 6px 10px; color: {INK}; }}
-.unica-table th {{ background: #0f766e; color: white; padding: 4px 8px;
+.unica-table th {{ background: #0f766e; color: white; padding: 3px 8px;
                     text-align: right; position: sticky; top: 0; white-space: nowrap; }}
 .unica-table th.period-col, .unica-table td.period-col {{ text-align: left; font-style: italic;
                     color: {MUTED}; white-space: nowrap; }}
-.unica-table td {{ padding: 3px 8px; text-align: right; white-space: nowrap; }}
+.unica-table td {{ padding: 2px 8px; line-height: 14px; text-align: right; white-space: nowrap; }}
 .unica-table td.bar-cell {{ min-width: 70px; padding: 2px 6px; }}
 .unica-table tr.total-row td {{ font-weight: 700; border-top: 2px solid {INK}; }}
 </style>
@@ -77,7 +77,7 @@ def summary_table_html(table, period_label, unit=""):
             t = (v - vmin) / span
             bg, txt = _green_shade(t)
             val_cell = f'<td style="background:{bg};color:{txt};">{_fmt(v, unit)}</td>'
-        bar = _bar_cell(row["% Change"])
+        bar = _bar_cell(row["% Change"], height=14, font_size=9)
         rows_html.append(
             f'<tr><td class="period-col">{row["Year"]}</td>{val_cell}'
             f'<td class="bar-cell">{bar}</td></tr>'
