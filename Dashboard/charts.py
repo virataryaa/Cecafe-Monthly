@@ -23,14 +23,24 @@ NAVY_SOFT = "#3d5d85"
 
 
 def _layout(title, height=None):
+    # Legend y is a fraction of the plot's own domain height (height minus
+    # margins), not a fixed pixel offset — a constant fraction like -0.3 puts
+    # the legend a tiny gap below short charts but a huge gap below tall ones.
+    # Solve for the fraction that yields a constant ~40px visual gap instead.
+    margin = dict(l=50, r=20, t=50, b=100)
+    if height:
+        domain_h = max(height - margin["t"] - margin["b"], 50)
+        legend_y = -40.0 / domain_h
+    else:
+        legend_y = -0.3
     layout = dict(
         title=dict(text=title, x=0.01, xanchor="left", y=0.97, yanchor="top",
                    font=dict(size=15)),
         paper_bgcolor=SURFACE,
         plot_bgcolor=SURFACE,
         font=dict(color=INK, family="system-ui, -apple-system, Segoe UI, sans-serif"),
-        margin=dict(l=50, r=20, t=50, b=100),
-        legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="left", x=0,
+        margin=margin,
+        legend=dict(orientation="h", yanchor="top", y=legend_y, xanchor="left", x=0,
                     bgcolor="rgba(0,0,0,0)"),
         xaxis=dict(gridcolor=GRID, linecolor=GRID, tickfont=dict(color=MUTED)),
         yaxis=dict(gridcolor=GRID, linecolor=GRID, tickfont=dict(color=MUTED),

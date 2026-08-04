@@ -121,7 +121,10 @@ def render_single(type_, destination):
         table, period_label = summary_table(df_wide, year_cols, "flow")
         st.markdown(summary_table_html(table, period_label, unit), unsafe_allow_html=True)
     with bottom_cols[1]:
-        st.plotly_chart(ytd_comparison(df_wide, year_cols, kind="flow", height=PANEL_H),
+        # Match the bar chart's height to the HTML table's rendered height
+        # (roughly header + one row per crop year) instead of a fixed value.
+        table_height = 60 + 38 * len(year_cols)
+        st.plotly_chart(ytd_comparison(df_wide, year_cols, kind="flow", height=table_height),
                          use_container_width=True)
 
     st.markdown(
@@ -205,40 +208,49 @@ with tab_detail:
 
 
 with tab_insights:
-    col_type, col_year, _ = st.columns([1, 2, 2])
+    col_type, col_range, _ = st.columns([1, 2, 2])
     with col_type:
         type_ins = st.selectbox("Type", TYPES, key="insights_type")
     crop_years = get_crop_years(df, type_ins)
-    with col_year:
-        crop_year_ins = st.select_slider("Crop Year", options=crop_years, value=crop_years[-1],
-                                          key="insights_crop_year")
+    default_start = crop_years[max(0, len(crop_years) - 5)]
+    with col_range:
+        start_cy, end_cy = st.select_slider(
+            "Crop Year Range", options=crop_years, value=(default_start, crop_years[-1]),
+            key=f"insights_crop_year_range_{type_ins}",
+        )
+    i0, i1 = crop_years.index(start_cy), crop_years.index(end_cy)
+    range_years = crop_years[i0:i1 + 1]
     lbl_ins = type_label(type_ins)
+    range_caption = start_cy if start_cy == end_cy else f"{start_cy}–{end_cy}"
 
-    mix = destination_mix(df, type_ins, crop_year_ins)
-    if mix:
-        labels = [d for d, _ in mix]
-        values = [v for _, v in mix]
-        st.markdown(f'<div class="section-label">Destination Mix — {lbl_ins} {crop_year_ins}</div>',
-                    unsafe_allow_html=True)
-        cols = st.columns([1, 1])
-        with cols[0]:
+    mix = destination_mix(df, type_ins, range_years)
+
+    with st.expander(f"Share of Exports — {lbl_ins} ({range_caption})", expanded=True):
+        if mix:
+            labels = [d for d, _ in mix]
+            values = [v for _, v in mix]
             st.plotly_chart(pie_breakdown(labels, values, "Share of Exports", height=PANEL_H),
                              use_container_width=True)
-        with cols[1]:
+        else:
+            st.info("No data for this Type / Crop Year range.")
+
+    with st.expander(f"Top Destinations — {lbl_ins} ({range_caption})", expanded=True):
+        if mix:
             st.plotly_chart(ranking_bar(labels, values, "Top Destinations", height=PANEL_H),
                              use_container_width=True)
-    else:
-        st.info("No data for this Type / Crop Year.")
+        else:
+            st.info("No data for this Type / Crop Year range.")
 
-    matrix = destination_month_matrix(df, type_ins, crop_year_ins)
-    if not matrix.empty:
-        st.markdown(f'<div class="section-label">Destination &times; Month — {lbl_ins} {crop_year_ins}</div>',
-                    unsafe_allow_html=True)
-        st.plotly_chart(
-            destination_heatmap(matrix, f"{lbl_ins} Exports by Destination & Month (K bags)",
-                                 height=max(280, 40 * len(matrix) + 100)),
-            use_container_width=True,
-        )
+    matrix = destination_month_matrix(df, type_ins, range_years)
+    with st.expander(f"Destination × Month — {lbl_ins} ({range_caption})", expanded=True):
+        if not matrix.empty:
+            st.plotly_chart(
+                destination_heatmap(matrix, f"{lbl_ins} Exports by Destination & Month (K bags)",
+                                     height=max(280, 40 * len(matrix) + 100)),
+                use_container_width=True,
+            )
+        else:
+            st.info("No data for this Type / Crop Year range.")
 
     st.markdown('<div class="section-label">Long-Run History</div>', unsafe_allow_html=True)
     longrun_dest_options = destinations_for_type(df, type_ins) + [EUROPE_LABEL, TOTAL]
@@ -251,9 +263,12 @@ with tab_insights:
     )
 
     st.markdown('<div class="section-label">Arabica / Robusta Mix</div>', unsafe_allow_html=True)
-    share = robusta_share_series(df)
+    mix_dest_options = destinations_for_type(df, ALL_TYPES) + [EUROPE_LABEL, TOTAL]
+    mix_dest = st.selectbox("Destination", mix_dest_options, key="insights_mix_dest")
+    share = robusta_share_series(df, mix_dest)
+    share_windowed = [(y, v) for y, v in share if y in range_years]
     st.plotly_chart(
-        share_line([y for y, _ in share], [v for _, v in share],
-                   "Robusta Share of Combined Exports (by Crop Year)", height=PANEL_H),
+        share_line([y for y, _ in share_windowed], [v for _, v in share_windowed],
+                   f"Robusta Share of Combined Exports to {mix_dest} ({range_caption})", height=PANEL_H),
         use_container_width=True,
     )

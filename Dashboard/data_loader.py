@@ -126,25 +126,25 @@ def get_crop_years(df, type_):
     return _crop_year_order(df, type_)
 
 
-def destination_mix(df, type_, crop_year):
-    """Full crop-year total per real destination (Europe/Total excluded), sorted
-    descending — feeds the pie chart and the top-destinations ranking bar."""
+def destination_mix(df, type_, crop_years):
+    """Total per real destination (Europe/Total excluded) summed across every
+    crop year in crop_years, sorted descending — feeds the pie chart and the
+    top-destinations ranking bar. Pass a single-element list for one season."""
     rows = []
     for d in destinations_for_type(df, type_):
         w = _pivot(df, type_, d)
-        if crop_year in w.columns:
-            total = w[crop_year].sum(skipna=True)
-            if total > 0:
-                rows.append((d, total))
+        total = sum(w[y].sum(skipna=True) for y in crop_years if y in w.columns)
+        if total > 0:
+            rows.append((d, total))
     rows.sort(key=lambda p: p[1], reverse=True)
     return rows
 
 
-def destination_month_matrix(df, type_, crop_year):
-    """Destination x Period matrix (Jul..Jun) for one crop year — feeds the heatmap.
-    Rows sorted by that crop year's full total, descending."""
+def destination_month_matrix(df, type_, crop_years):
+    """Destination x Period matrix (Jul..Jun) summed across every crop year in
+    crop_years — feeds the heatmap. Rows sorted by total, descending."""
     type_mask = df["Type"].notna() if type_ == ALL_TYPES else df["Type"] == type_
-    sub = df[type_mask & (df["CropYear"] == crop_year) & (df["Destination"] != TOTAL)]
+    sub = df[type_mask & df["CropYear"].isin(crop_years) & (df["Destination"] != TOTAL)]
     matrix = sub.pivot_table(index="Destination", columns="Period", values="Bags (K)", aggfunc="sum")
     matrix = matrix.reindex(columns=PERIOD_ORDER)
     matrix = matrix.loc[matrix.sum(axis=1, skipna=True).sort_values(ascending=False).index]
@@ -166,11 +166,11 @@ def long_run_series(df, type_, destination):
     return grouped[["Date", "Bags (K)"]]
 
 
-def robusta_share_series(df):
+def robusta_share_series(df, destination=TOTAL):
     """Arabica vs Robusta mix by crop year: Robusta's % share of combined
-    Total exports, for every crop year both types have data."""
-    arabica = _pivot(df, "Arabica", TOTAL)
-    robusta = _pivot(df, "Robusta", TOTAL)
+    exports to `destination`, for every crop year both types have data."""
+    arabica = _pivot(df, "Arabica", destination)
+    robusta = _pivot(df, "Robusta", destination)
     crop_years = _crop_year_order(df)
     rows = []
     for y in crop_years:
