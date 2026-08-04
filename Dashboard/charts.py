@@ -357,6 +357,98 @@ def project_manual_yearly(df_wide, year_cols, target_total, ref_years_n=5):
     return proj, remaining_budget
 
 
+def compare_series(df_wide, series_cols, title, height=None, cumulative=False):
+    """Overlays one line per column (e.g. per destination) for a single
+    chosen crop year — used when multiple destinations are selected at once."""
+    periods = df_wide["Period"].tolist()
+    data = df_wide[series_cols].cumsum(skipna=True) if cumulative else df_wide[series_cols]
+    palette_cycle = list(SERIES.values())
+    fig = go.Figure()
+    for i, col in enumerate(series_cols):
+        fig.add_trace(go.Scatter(
+            x=periods, y=data[col], mode="lines+markers", name=col, connectgaps=True,
+            line=dict(width=2.5, color=palette_cycle[i % len(palette_cycle)]),
+            marker=dict(size=5),
+        ))
+    fig.update_layout(**_layout(title, height))
+    return fig
+
+
+def pie_breakdown(labels, values, title, height=None):
+    palette_cycle = list(SERIES.values())
+    colors = [palette_cycle[i % len(palette_cycle)] for i in range(len(labels))]
+    fig = go.Figure(go.Pie(
+        labels=labels, values=values, hole=0.45,
+        marker=dict(colors=colors, line=dict(color=SURFACE, width=1.5)),
+        textinfo="label+percent", textfont=dict(size=11, color=INK),
+    ))
+    layout = _layout(title, height)
+    layout["legend"] = dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02,
+                             bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(showlegend=True, **layout)
+    return fig
+
+
+def ranking_bar(labels, values, title, height=None, top_n=8):
+    pairs = sorted(zip(labels, values), key=lambda p: p[1], reverse=True)
+    top = pairs[:top_n]
+    rest = pairs[top_n:]
+    if rest:
+        top.append(("Others", sum(v for _, v in rest)))
+    top = top[::-1]  # smallest at bottom, largest at top for a horizontal bar
+    labels_sorted = [p[0] for p in top]
+    values_sorted = [p[1] for p in top]
+    colors = [MUTED if lbl == "Others" else NAVY_SOFT for lbl in labels_sorted]
+
+    fig = go.Figure(go.Bar(
+        x=values_sorted, y=labels_sorted, orientation="h",
+        marker=dict(color=colors),
+        text=[f"{v:,.0f}" for v in values_sorted], textposition="outside",
+    ))
+    layout = _layout(title, height)
+    layout["xaxis"]["title"] = None
+    layout["margin"] = dict(l=10, r=40, t=50, b=30)
+    fig.update_layout(showlegend=False, **layout)
+    return fig
+
+
+def destination_heatmap(matrix_df, title, height=None):
+    """matrix_df: index = destination, columns = Period (Jul..Jun)."""
+    z = matrix_df.values
+    fig = go.Figure(go.Heatmap(
+        z=z, x=matrix_df.columns.tolist(), y=matrix_df.index.tolist(),
+        colorscale=[[0, "#eafaf0"], [1, "#0a6e42"]],
+        text=[[f"{v:,.0f}" if pd.notna(v) else "" for v in row] for row in z],
+        texttemplate="%{text}", textfont=dict(size=10),
+        colorbar=dict(title=""),
+    ))
+    layout = _layout(title, height)
+    layout["xaxis"]["side"] = "top"
+    fig.update_layout(**layout)
+    return fig
+
+
+def long_run_line(dates, values, title, height=None):
+    fig = go.Figure(go.Scatter(
+        x=dates, y=values, mode="lines", connectgaps=True,
+        line=dict(width=2, color=NAVY_SOFT), fill="tozeroy",
+        fillcolor="rgba(61,93,133,0.08)",
+    ))
+    fig.update_layout(showlegend=False, **_layout(title, height))
+    return fig
+
+
+def share_line(x, y_pct, title, height=None):
+    fig = go.Figure(go.Scatter(
+        x=x, y=y_pct, mode="lines+markers", connectgaps=True,
+        line=dict(width=2.5, color=SERIES["aqua"]), marker=dict(size=5),
+    ))
+    layout = _layout(title, height)
+    layout["yaxis"]["ticksuffix"] = "%"
+    fig.update_layout(showlegend=False, **layout)
+    return fig
+
+
 def ytd_comparison(df_wide, year_cols, kind="flow", title=None, height=None):
     table, period_label = summary_table(df_wide, year_cols, kind)
     value_col = table.columns[1]
