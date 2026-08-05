@@ -191,3 +191,25 @@ def robusta_share_series(df, destination=TOTAL):
         if a + r > 0:
             rows.append((y, r / (a + r) * 100))
     return rows
+
+
+def monthly_type_mix(df, destination, crop_years=None):
+    """Actual Arabica & Robusta bags per calendar month (not crop-year totals),
+    plus Robusta's % share of that same month — feeds the monthly mix chart.
+    crop_years, if given, restricts to those crop years before grouping."""
+    if destination == EUROPE_LABEL:
+        dest_mask = df["Destination"].isin(EUROPE_MEMBERS)
+    else:
+        dest_mask = df["Destination"] == destination
+    sub = df[dest_mask]
+    if crop_years is not None:
+        sub = sub[sub["CropYear"].isin(crop_years)]
+
+    pivot = sub.pivot_table(index=["Year", "Month"], columns="Type", values="Bags (K)", aggfunc="sum")
+    pivot = pivot.reindex(columns=["Arabica", "Robusta"]).fillna(0.0).reset_index()
+    pivot["Date"] = pd.to_datetime(dict(year=pivot["Year"], month=pivot["Month"], day=1))
+    pivot = pivot.sort_values("Date")
+
+    total = pivot["Arabica"] + pivot["Robusta"]
+    pivot["RobustaSharePct"] = (pivot["Robusta"] / total * 100).where(total > 0)
+    return pivot[["Date", "Arabica", "Robusta", "RobustaSharePct"]]

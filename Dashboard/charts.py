@@ -463,6 +463,23 @@ def share_line(x, y_pct, title, height=None):
     return fig
 
 
+def monthly_mix_bars(dates, arabica, robusta, share_pct, title, height=None):
+    """Faded, overlaid Arabica/Robusta monthly bars (left axis, actual bags)
+    with the Robusta % share overlaid as a line (right axis)."""
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=dates, y=arabica, name="Arabica", marker=dict(color=SERIES["blue"]), opacity=0.35))
+    fig.add_trace(go.Bar(x=dates, y=robusta, name="Robusta", marker=dict(color=SERIES["orange"]), opacity=0.5))
+    fig.add_trace(go.Scatter(x=dates, y=share_pct, name="Robusta %", mode="lines", yaxis="y2",
+                              line=dict(width=2.5, color=INK)))
+    layout = _layout(title, height)
+    layout["barmode"] = "overlay"
+    layout["yaxis"]["title"] = "K bags"
+    layout["yaxis2"] = dict(overlaying="y", side="right", range=[0, 100], ticksuffix="%",
+                             gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False)
+    fig.update_layout(**layout)
+    return fig
+
+
 def ytd_comparison(df_wide, year_cols, kind="flow", title=None, height=None):
     table, period_label = summary_table(df_wide, year_cols, kind)
     value_col = table.columns[1]

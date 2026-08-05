@@ -7,10 +7,11 @@ import streamlit as st
 from data_loader import (load_raw, types, destinations_for_type, types_traded, year_columns,
                           flow_wide, proportion_wide, compare_wide, get_crop_years,
                           destination_mix, destination_month_matrix, long_run_series,
-                          robusta_share_series, DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
+                          robusta_share_series, monthly_type_mix,
+                          DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
-                     destination_heatmap, long_run_line, share_line)
+                     destination_heatmap, long_run_line, share_line, monthly_mix_bars)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
@@ -288,5 +289,14 @@ with tab_insights:
         st.plotly_chart(
             share_line([y for y, _ in share_windowed], [v for _, v in share_windowed],
                        f"Robusta Share of Combined Exports to {mix_dest} ({range_caption})", height=PANEL_H),
+            use_container_width=True,
+        )
+
+        monthly_mix = monthly_type_mix(df, mix_dest, range_years)
+        st.plotly_chart(
+            monthly_mix_bars(monthly_mix["Date"], monthly_mix["Arabica"], monthly_mix["Robusta"],
+                              monthly_mix["RobustaSharePct"],
+                              f"Monthly Arabica vs Robusta Exports to {mix_dest} ({range_caption})",
+                              height=PANEL_H),
             use_container_width=True,
         )
