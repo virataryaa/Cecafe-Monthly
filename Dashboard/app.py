@@ -8,6 +8,7 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
                           flow_wide, proportion_wide, compare_wide, get_crop_years,
                           destination_mix, destination_month_matrix, long_run_series,
                           robusta_share_series, monthly_type_mix, ytd_period_window,
+                          month_options, month_label, crop_years_overlapping_months,
                           DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
@@ -239,19 +240,22 @@ with tab_insights:
     col_type, col_range, _ = st.columns([1, 2, 2])
     with col_type:
         type_ins = st.selectbox("Type", TYPES, key="insights_type")
-    crop_years = get_crop_years(df, type_ins)
-    default_start = crop_years[max(0, len(crop_years) - 5)]
+    months = month_options(df)
+    month_labels = [month_label(m) for m in months]
+    default_start_idx = max(0, len(months) - 12)
     with col_range:
-        start_cy, end_cy = st.select_slider(
-            "Crop Year Range", options=crop_years, value=(default_start, crop_years[-1]),
-            key=f"insights_crop_year_range_{type_ins}",
+        start_lbl, end_lbl = st.select_slider(
+            "Month Range", options=month_labels,
+            value=(month_labels[default_start_idx], month_labels[-1]),
+            key=f"insights_month_range_{type_ins}",
         )
-    i0, i1 = crop_years.index(start_cy), crop_years.index(end_cy)
-    range_years = crop_years[i0:i1 + 1]
+    i0, i1 = month_labels.index(start_lbl), month_labels.index(end_lbl)
+    start_ym, end_ym = months[i0], months[i1]
+    range_years = crop_years_overlapping_months(df, start_ym, end_ym)
     lbl_ins = type_label(type_ins)
-    range_caption = start_cy if start_cy == end_cy else f"{start_cy}–{end_cy}"
+    range_caption = start_lbl if start_lbl == end_lbl else f"{start_lbl}–{end_lbl}"
 
-    mix = destination_mix(df, type_ins, range_years)
+    mix = destination_mix(df, type_ins, start_ym, end_ym)
 
     with st.expander(f"Share of Exports — {lbl_ins} ({range_caption})", expanded=True):
         if mix:
@@ -260,16 +264,16 @@ with tab_insights:
             st.plotly_chart(pie_breakdown(labels, values, "Share of Exports", height=PANEL_H),
                              use_container_width=True)
         else:
-            st.info("No data for this Type / Crop Year range.")
+            st.info("No data for this Type / Month range.")
 
     with st.expander(f"Top Destinations — {lbl_ins} ({range_caption})", expanded=True):
         if mix:
             st.plotly_chart(ranking_bar(labels, values, "Top Destinations", height=PANEL_H),
                              use_container_width=True)
         else:
-            st.info("No data for this Type / Crop Year range.")
+            st.info("No data for this Type / Month range.")
 
-    matrix = destination_month_matrix(df, type_ins, range_years)
+    matrix = destination_month_matrix(df, type_ins, start_ym, end_ym)
     with st.expander(f"Destination × Month — {lbl_ins} ({range_caption})", expanded=True):
         if not matrix.empty:
             st.plotly_chart(
@@ -278,7 +282,7 @@ with tab_insights:
                 use_container_width=True,
             )
         else:
-            st.info("No data for this Type / Crop Year range.")
+            st.info("No data for this Type / Month range.")
 
     st.markdown('<div class="section-label">Long-Run History</div>', unsafe_allow_html=True)
     longrun_dest_options = destinations_for_type(df, type_ins) + [EUROPE_LABEL, TOTAL]

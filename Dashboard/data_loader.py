@@ -152,25 +152,54 @@ def get_crop_years(df, type_):
     return _crop_year_order(df, type_)
 
 
-def destination_mix(df, type_, crop_years):
-    """Total per real destination (Europe/Total excluded) summed across every
-    crop year in crop_years, sorted descending — feeds the pie chart and the
-    top-destinations ranking bar. Pass a single-element list for one season."""
-    rows = []
-    for d in destinations_for_type(df, type_):
-        w = _pivot(df, type_, d)
-        total = sum(w[y].sum(skipna=True) for y in crop_years if y in w.columns)
-        if total > 0:
-            rows.append((d, total))
+def month_options(df):
+    """Every (Year, Month) combination present in the data, chronological —
+    feeds the Insights tab's monthly range slider."""
+    combos = df[["Year", "Month"]].drop_duplicates().sort_values(["Year", "Month"])
+    return [(int(y), int(m)) for y, m in combos.itertuples(index=False)]
+
+
+def month_label(ym):
+    year, month = ym
+    return f"{MONTH_NAMES[month]} {year}"
+
+
+def _month_key(year, month):
+    return year * 12 + month
+
+
+def crop_years_overlapping_months(df, start_ym, end_ym):
+    """Crop-year labels that have at least one reported month inside the
+    inclusive (Year, Month) range — used to window the crop-year-based charts
+    (Robusta mix trend) off the same monthly slider as everything else."""
+    key = _month_key(df["Year"], df["Month"])
+    mask = (key >= _month_key(*start_ym)) & (key <= _month_key(*end_ym))
+    sub = df[mask]
+    return (sub[["CropStart", "CropYear"]].drop_duplicates()
+            .sort_values("CropStart")["CropYear"].tolist())
+
+
+def destination_mix(df, type_, start_ym, end_ym):
+    """Total per real destination (Europe/Total excluded) within the inclusive
+    (Year, Month) range, sorted descending — feeds the pie chart and the
+    top-destinations ranking bar."""
+    key = _month_key(df["Year"], df["Month"])
+    mask = (key >= _month_key(*start_ym)) & (key <= _month_key(*end_ym))
+    type_mask = df["Type"].notna() if type_ == ALL_TYPES else df["Type"] == type_
+    sub = df[type_mask & mask & (df["Destination"] != TOTAL)]
+    totals = sub.groupby("Destination")["Bags (K)"].sum()
+    rows = [(d, v) for d, v in totals.items() if v > 0]
     rows.sort(key=lambda p: p[1], reverse=True)
     return rows
 
 
-def destination_month_matrix(df, type_, crop_years):
-    """Destination x Period matrix (Jul..Jun) summed across every crop year in
-    crop_years — feeds the heatmap. Rows sorted by total, descending."""
+def destination_month_matrix(df, type_, start_ym, end_ym):
+    """Destination x Period matrix (Jul..Jun) summed within the inclusive
+    (Year, Month) range — feeds the heatmap. Rows sorted by total, descending."""
+    key = _month_key(df["Year"], df["Month"])
+    mask = (key >= _month_key(*start_ym)) & (key <= _month_key(*end_ym))
     type_mask = df["Type"].notna() if type_ == ALL_TYPES else df["Type"] == type_
-    sub = df[type_mask & df["CropYear"].isin(crop_years) & (df["Destination"] != TOTAL)]
+    sub = df[type_mask & mask & (df["Destination"] != TOTAL)]
     matrix = sub.pivot_table(index="Destination", columns="Period", values="Bags (K)", aggfunc="sum")
     matrix = matrix.reindex(columns=PERIOD_ORDER)
     matrix = matrix.loc[matrix.sum(axis=1, skipna=True).sort_values(ascending=False).index]
