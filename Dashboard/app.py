@@ -11,7 +11,7 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
                           DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
-                     destination_heatmap, long_run_line, share_line, monthly_mix_bars)
+                     destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
@@ -122,6 +122,13 @@ def render_single(type_, destination):
             cumulative_forecast(df_wide, year_cols, title="Cumulative Exports (crop year)", height=2 * PANEL_H + 40),
             use_container_width=True,
         )
+
+    long_run = long_run_series(df, type_, destination)
+    st.plotly_chart(
+        rolling_12m_line(long_run["Date"], long_run["Bags (K)"],
+                          title="Rolling 12-Month Total", height=PANEL_H),
+        use_container_width=True,
+    )
 
     bottom_cols = st.columns([1, 3])
     with bottom_cols[0]:

@@ -443,6 +443,22 @@ def destination_heatmap(matrix_df, title, height=None):
     return fig
 
 
+def rolling_12m_line(dates, values, title="Rolling 12-Month Total", height=None, window=12):
+    """Trailing N-month sum, plotted continuously over the full chronological
+    history (independent of crop-year boundaries) — smooths out seasonality
+    so the underlying trend is visible."""
+    rolling = pd.Series(values).rolling(window, min_periods=window).sum()
+    fig = go.Figure(go.Scatter(
+        x=dates, y=rolling, mode="lines", connectgaps=True,
+        line=dict(width=2.5, color=NAVY_SOFT), fill="tozeroy",
+        fillcolor="rgba(61,93,133,0.08)",
+    ))
+    layout = _layout(title, height)
+    layout["yaxis"]["title"] = "K bags"
+    fig.update_layout(showlegend=False, **layout)
+    return fig
+
+
 def long_run_line(dates, values, title, height=None):
     fig = go.Figure(go.Scatter(
         x=dates, y=values, mode="lines", connectgaps=True,
