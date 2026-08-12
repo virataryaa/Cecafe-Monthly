@@ -43,7 +43,7 @@ _STYLE = f"""
                 font-family: system-ui, -apple-system, Segoe UI, sans-serif; }}
 .unica-table caption {{ text-align: left; font-weight: 700; font-size: 13px;
                          padding: 6px 10px; color: {INK}; }}
-.unica-table th {{ background: #0f766e; color: white; padding: 3px 8px;
+.unica-table th {{ background: #1e3a5f; color: white; padding: 3px 8px;
                     text-align: right; position: sticky; top: 0; white-space: nowrap; }}
 .unica-table th.period-col, .unica-table td.period-col {{ text-align: left; font-style: italic;
                     color: {MUTED}; white-space: nowrap; }}
