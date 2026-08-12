@@ -124,9 +124,12 @@ def render_single(type_, destination):
         )
 
     long_run = long_run_series(df, type_, destination)
+    window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
+                       format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
+                       key=f"rolling_window_{type_}_{destination}", label_visibility="collapsed")
     st.plotly_chart(
         rolling_12m_line(long_run["Date"], long_run["Bags (K)"],
-                          title="Rolling 12-Month Total", height=PANEL_H),
+                          title=f"Rolling {window}-Month Total", height=PANEL_H, window=window),
         use_container_width=True,
     )
 
