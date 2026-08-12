@@ -268,8 +268,11 @@ with tab_insights:
 
     with st.expander(f"Top Destinations — {lbl_ins} ({range_caption})", expanded=True):
         if mix:
-            st.plotly_chart(ranking_bar(labels, values, "Top Destinations", height=PANEL_H),
-                             use_container_width=True)
+            st.plotly_chart(
+                ranking_bar(labels, values, "Top Destinations", top_n=len(labels),
+                            height=max(PANEL_H, 30 * len(labels) + 80)),
+                use_container_width=True,
+            )
         else:
             st.info("No data for this Type / Month range.")
 
