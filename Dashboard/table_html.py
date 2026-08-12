@@ -183,6 +183,11 @@ def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
                       else mat[ytd_periods].mean(axis=1, skipna=True))
     if full_series is None:
         full_series = mat.sum(axis=1, skipna=True) if kind == "flow" else mat.mean(axis=1, skipna=True)
+    # A crop year missing any month isn't a real "full year" total yet (this is
+    # always true of the current, still-in-progress crop year) — blank it out
+    # rather than showing a misleadingly low total and a misleadingly bad YoY.
+    incomplete = mat.isna().any(axis=1)
+    full_series = full_series.where(~incomplete)
 
     ytd_yoy = ytd_series.pct_change(fill_method=None) * 100
     full_yoy = full_series.pct_change(fill_method=None) * 100
