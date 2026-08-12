@@ -124,10 +124,11 @@ def cumulative_forecast(df_wide, year_cols, title="Cumulative (to date)", height
         is_last = i == len(shown_years) - 1
         fig.add_trace(go.Scatter(
             x=periods, y=cum[yr],
-            mode="lines",
+            mode="lines+markers" if is_last else "lines",
             name=yr, connectgaps=True,
             line=dict(width=4 if is_last else 2,
                        color=INK if is_last else palette_cycle[i % len(palette_cycle)]),
+            marker=dict(size=7, color=INK) if is_last else dict(size=0),
         ))
     if proj_vals:
         current_year = year_cols[-1]
