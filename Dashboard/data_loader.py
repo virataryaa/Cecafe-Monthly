@@ -118,6 +118,20 @@ def proportion_wide(df, type_, destination):
     return prop
 
 
+def ytd_period_window(df_wide, year_cols):
+    """Periods (Jul, Jul-Aug, ...) actually reported so far for the latest
+    crop year — used so every crop year's 'YTD' figure covers the same
+    apples-to-apples span instead of summing a full season for old years
+    against one month for the current year."""
+    periods = df_wide["Period"].tolist()
+    current_year = year_cols[-1]
+    last_valid = df_wide[current_year].last_valid_index()
+    n = 0 if last_valid is None else last_valid + 1
+    included = periods[:n] or periods[:1]
+    span = included[0] if len(included) == 1 else f"{included[0]}-{included[-1]}"
+    return included, f"YTD ({span})"
+
+
 def latest_crop_year_label(df, type_):
     sub = df[df["Type"] == type_]
     return _crop_label(sub["CropStart"].max())

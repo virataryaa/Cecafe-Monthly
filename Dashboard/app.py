@@ -7,7 +7,7 @@ import streamlit as st
 from data_loader import (load_raw, types, destinations_for_type, types_traded, year_columns,
                           flow_wide, proportion_wide, compare_wide, get_crop_years,
                           destination_mix, destination_month_matrix, long_run_series,
-                          robusta_share_series, monthly_type_mix,
+                          robusta_share_series, monthly_type_mix, ytd_period_window,
                           DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
@@ -134,8 +134,11 @@ def render_single(type_, destination):
         st.plotly_chart(ytd_comparison(df_wide, year_cols, kind="flow", height=table_height),
                          use_container_width=True)
 
+    ytd_periods, ytd_label = ytd_period_window(df_wide, year_cols)
+
     st.markdown(
-        seasonal_table_html(df_wide, year_cols, title=f"{lbl} Exports to {destination}", unit=unit, kind="flow"),
+        seasonal_table_html(df_wide, year_cols, title=f"{lbl} Exports to {destination}", unit=unit, kind="flow",
+                             ytd_label=ytd_label),
         unsafe_allow_html=True,
     )
 
@@ -143,16 +146,24 @@ def render_single(type_, destination):
         prop_wide = proportion_wide(df, type_, destination)
         prop_year_cols = year_columns(prop_wide)
         total_wide = flow_wide(df, type_, TOTAL)
-        # Properly volume-weighted YTD% (sum of dest / sum of total), not an
-        # average of the monthly percentages.
-        weighted_ytd = pd.Series({
-            y: (df_wide[y].sum(skipna=True) / total_wide[y].sum(skipna=True) * 100)
-            for y in prop_year_cols if total_wide[y].sum(skipna=True)
-        })
+
+        def _weighted_ratio(periods):
+            # Properly volume-weighted % (sum of dest / sum of total over the
+            # given periods), not an average of the monthly percentages.
+            d = df_wide.set_index("Period").loc[periods]
+            t = total_wide.set_index("Period").loc[periods]
+            return pd.Series({
+                y: (d[y].sum(skipna=True) / t[y].sum(skipna=True) * 100)
+                for y in prop_year_cols if t[y].sum(skipna=True)
+            })
+
+        weighted_ytd = _weighted_ratio(ytd_periods)
+        weighted_full = _weighted_ratio(df_wide["Period"].tolist())
         st.markdown(
             seasonal_table_html(prop_wide, prop_year_cols,
                                  title=f"{destination} — Share of Total {lbl} Exports", unit="%", kind="ratio",
-                                 summary_series=weighted_ytd, summary_label="YTD %"),
+                                 ytd_series=weighted_ytd, ytd_label=f"{ytd_label} %",
+                                 full_series=weighted_full, full_label="Full Year %"),
             unsafe_allow_html=True,
         )
 

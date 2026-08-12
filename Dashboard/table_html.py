@@ -152,20 +152,40 @@ def overview_table_html(rows, title, prev_year, current_year):
 
 
 def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
-                         summary_series=None, summary_label="YTD"):
+                         ytd_series=None, ytd_label="YTD",
+                         full_series=None, full_label="Full Year"):
     """Crop-year x month heatmap table (crop years as rows, Jul->Jun as columns) —
     matches the original Excel seasonal layout. df_wide is Period-rows/CropYear-columns
     (as produced by flow_wide/proportion_wide); this transposes it for display.
 
-    summary_series, if given, is a Series indexed by crop year supplying the right-hand
-    summary column (e.g. a properly volume-weighted proportion); otherwise it defaults
-    to a row sum (kind="flow") or row mean (kind="ratio")."""
+    Two separate right-hand summaries, so old (complete) crop years and the
+    current (partial) one are never conflated:
+    - ytd_series / ytd_label: value restricted to the periods actually reported
+      so far for the current crop year (e.g. "Jul", or "Jul-Aug"), for every
+      crop year — an apples-to-apples comparison. Pass a Series indexed by
+      crop year (e.g. a properly volume-weighted proportion) or leave None to
+      default to a plain sum (kind="flow") / mean (kind="ratio") over just
+      the first reported period.
+    - full_series / full_label: the row's full-season value, same defaulting
+      rules but over every period in that crop year."""
     periods = df_wide["Period"].tolist()
     mat = df_wide.set_index("Period")[year_cols].T  # rows=crop year, columns=Period
 
-    if summary_series is None:
-        summary_series = mat.sum(axis=1, skipna=True) if kind == "flow" else mat.mean(axis=1, skipna=True)
-    summary_yoy = summary_series.pct_change(fill_method=None) * 100
+    if ytd_series is None:
+        last_row = mat.iloc[-1]
+        n_ytd = 0
+        for p in periods:
+            if pd.isna(last_row.get(p)):
+                break
+            n_ytd += 1
+        ytd_periods = periods[:n_ytd] or periods[:1]
+        ytd_series = (mat[ytd_periods].sum(axis=1, skipna=True) if kind == "flow"
+                      else mat[ytd_periods].mean(axis=1, skipna=True))
+    if full_series is None:
+        full_series = mat.sum(axis=1, skipna=True) if kind == "flow" else mat.mean(axis=1, skipna=True)
+
+    ytd_yoy = ytd_series.pct_change(fill_method=None) * 100
+    full_yoy = full_series.pct_change(fill_method=None) * 100
 
     vmin = mat.min(numeric_only=True).min()
     vmax = mat.max(numeric_only=True).max()
@@ -185,10 +205,15 @@ def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
             t = (v - vmin) / span
             bg, txt = _green_shade(t)
             cells.append(f'<td style="background:{bg};color:{txt};">{_fmt(v, unit)}</td>')
-        s = summary_series.get(yr)
-        s_cell = f'<td style="font-weight:600;">{_fmt(s, unit)}</td>' if pd.notna(s) else '<td></td>'
-        yoy_cell = f'<td class="bar-cell">{_bar_cell(summary_yoy.get(yr))}</td>'
-        rows_html.append("<tr>" + "".join(cells) + s_cell + yoy_cell + "</tr>")
+        ytd_v = ytd_series.get(yr)
+        ytd_cell = f'<td style="font-weight:600;">{_fmt(ytd_v, unit)}</td>' if pd.notna(ytd_v) else '<td></td>'
+        ytd_yoy_cell = f'<td class="bar-cell">{_bar_cell(ytd_yoy.get(yr))}</td>'
+        full_v = full_series.get(yr)
+        full_cell = f'<td style="font-weight:600;">{_fmt(full_v, unit)}</td>' if pd.notna(full_v) else '<td></td>'
+        full_yoy_cell = f'<td class="bar-cell">{_bar_cell(full_yoy.get(yr))}</td>'
+        rows_html.append(
+            "<tr>" + "".join(cells) + ytd_cell + ytd_yoy_cell + full_cell + full_yoy_cell + "</tr>"
+        )
 
     if len(mat) >= 2:
         yoy_row = (mat.iloc[-1] - mat.iloc[-2]) / mat.iloc[-2] * 100
@@ -208,11 +233,12 @@ def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
     <div class="unica-table-wrap">
     <table class="unica-table">
       <caption>{heading}</caption>
-      <thead><tr><th class="period-col">Crop Year</th>{header_cells}<th>{summary_label}</th><th>YoY</th></tr></thead>
+      <thead><tr><th class="period-col">Crop Year</th>{header_cells}
+        <th>{ytd_label}</th><th>YoY</th><th>{full_label}</th><th>YoY</th></tr></thead>
       <tbody>
         {''.join(rows_html)}
-        <tr class="total-row"><td class="period-col">YoY</td>{yoy_row_cells}<td></td><td></td></tr>
-        <tr class="total-row"><td class="period-col">LTA Avg</td>{lta_row_cells}<td></td><td></td></tr>
+        <tr class="total-row"><td class="period-col">YoY</td>{yoy_row_cells}<td></td><td></td><td></td><td></td></tr>
+        <tr class="total-row"><td class="period-col">LTA Avg</td>{lta_row_cells}<td></td><td></td><td></td><td></td></tr>
       </tbody>
     </table>
     </div>
