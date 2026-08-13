@@ -13,8 +13,8 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
-                     scatter_share_vs_spread, lag_correlation_multi_bar,
-                     robusta_price_share_combined, granger_pvalue_bar)
+                     scatter_with_trend, lag_correlation_multi_bar,
+                     robusta_price_share_combined, price_volume_combined, granger_pvalue_bar)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html, current_read_card_html
 import luis_loader as pi
 
@@ -364,8 +364,9 @@ with tab_price_impact:
     cols_pi = st.columns([1, 1])
     with cols_pi[0]:
         st.plotly_chart(
-            scatter_share_vs_spread(merged["Robusta"], merged["RobustaSharePct"],
-                                     f"Robusta Price (lag {lag}m) vs Share", height=PANEL_H),
+            scatter_with_trend(merged["Robusta"], merged["RobustaSharePct"],
+                                "Robusta Price ($/bag)", "Robusta Share (%)",
+                                f"Robusta Price (lag {lag}m) vs Share", height=PANEL_H, y_pct=True),
             use_container_width=True,
         )
     with cols_pi[1]:
@@ -405,3 +406,40 @@ with tab_price_impact:
                                     "Granger Test: Spread -> Share (p-value by lag)", height=PANEL_H),
                 use_container_width=True,
             )
+
+    st.markdown('<div class="section-label">Export Volume vs Own Price (Arabica &amp; Robusta)</div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Each type\'s own export volume (K bags) against its own price, at a '
+        'chosen lag &mdash; exploratory only. <b>Neither passes the Granger test at any lag</b> '
+        '(best p &asymp; 0.07&ndash;0.09 for both Arabica and Robusta), so treat this as a chart to look '
+        'at, not a validated relationship like the Robusta price/share one above.</div>',
+        unsafe_allow_html=True,
+    )
+    vol_type = st.selectbox("Type", ["Arabica", "Robusta"], key="pi_vol_type")
+    vol_lag = st.slider("Lag (months)", 0, pi.MAX_LAG, value=6, key=f"pi_vol_lag_{vol_type}",
+                         help=f"Months by which {vol_type} price leads {vol_type} export volume.")
+
+    vol_merged = pi.lagged_merge_volume(vol_type, vol_lag)
+    st.plotly_chart(
+        price_volume_combined(vol_merged["Date"], vol_merged["Price"], vol_merged["Volume"],
+                               f"{vol_type} Price ($/bag)", f"{vol_type} Volume (K bags)",
+                               f"{vol_type} Price (lag {vol_lag}m) vs {vol_type} Export Volume", height=PANEL_H + 60),
+        use_container_width=True,
+    )
+    cols_vol = st.columns([1, 1])
+    with cols_vol[0]:
+        st.plotly_chart(
+            scatter_with_trend(vol_merged["Price"], vol_merged["Volume"],
+                                f"{vol_type} Price ($/bag)", f"{vol_type} Volume (K bags)",
+                                f"{vol_type} Price (lag {vol_lag}m) vs Volume", height=PANEL_H),
+            use_container_width=True,
+        )
+    with cols_vol[1]:
+        granger_vol = pi.granger_scan_volume(vol_type, maxlag=pi.MAX_LAG)
+        st.plotly_chart(
+            granger_pvalue_bar(granger_vol["Lag"], granger_vol["PValue"],
+                                f"Granger Test: {vol_type} Price -> {vol_type} Volume (p-value by lag)",
+                                height=PANEL_H),
+            use_container_width=True,
+        )

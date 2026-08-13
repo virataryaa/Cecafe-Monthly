@@ -517,6 +517,26 @@ def robusta_price_share_combined(dates, price_vals, share_vals, title, height=No
     return fig
 
 
+def price_volume_combined(dates, price_vals, volume_vals, price_label, volume_label, title, height=None):
+    """A type's own price (primary axis) alongside its own export volume
+    (K bags, secondary axis) — generic version of robusta_price_share_combined
+    for exploratory price-vs-own-volume views that haven't passed a
+    significance test, so the chart itself carries no implied validation."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=dates, y=price_vals, mode="lines", connectgaps=True,
+                              line=dict(width=2, color=NAVY_SOFT), fill="tozeroy",
+                              fillcolor="rgba(61,93,133,0.10)", name=price_label))
+    fig.add_trace(go.Scatter(x=dates, y=volume_vals, mode="lines+markers", connectgaps=True,
+                              line=dict(width=2.5, color=SERIES["aqua"]), marker=dict(size=5),
+                              name=volume_label, yaxis="y2"))
+    layout = _layout(title, height)
+    layout["yaxis"]["title"] = "$/bag"
+    layout["yaxis2"] = dict(overlaying="y", side="right", gridcolor=GRID, tickfont=dict(color=MUTED),
+                             showgrid=False, title="K bags")
+    fig.update_layout(showlegend=True, **layout)
+    return fig
+
+
 def granger_pvalue_bar(lags, pvalues, title, height=None, alpha=0.05):
     """Granger causality p-value by lag, with a dashed line at the alpha
     threshold — bars below the line are lags where the price series has
@@ -535,12 +555,12 @@ def granger_pvalue_bar(lags, pvalues, title, height=None, alpha=0.05):
     return fig
 
 
-def scatter_share_vs_spread(spread_vals, share_vals, title, height=None):
-    """One point per aligned month: spread (x) vs Robusta share (y), with an
-    OLS trendline and Pearson r in the title — the direct level-vs-level
-    relationship at whatever lag the caller has already aligned on."""
-    x = np.asarray(spread_vals, dtype=float)
-    y = np.asarray(share_vals, dtype=float)
+def scatter_with_trend(x_vals, y_vals, x_label, y_label, title, height=None, y_pct=False):
+    """One point per aligned month: x vs y, with an OLS trendline and
+    Pearson r in the title — the direct level-vs-level relationship at
+    whatever lag the caller has already aligned on."""
+    x = np.asarray(x_vals, dtype=float)
+    y = np.asarray(y_vals, dtype=float)
     mask = ~np.isnan(x) & ~np.isnan(y)
     x, y = x[mask], y[mask]
 
@@ -557,9 +577,10 @@ def scatter_share_vs_spread(spread_vals, share_vals, title, height=None):
 
     full_title = title if r is None else f"{title} (r = {r:+.2f}, n = {len(x)})"
     layout = _layout(full_title, height)
-    layout["xaxis"]["title"] = "Arabica - Robusta Spread ($/tonne)"
-    layout["yaxis"]["title"] = "Robusta Share (%)"
-    layout["yaxis"]["ticksuffix"] = "%"
+    layout["xaxis"]["title"] = x_label
+    layout["yaxis"]["title"] = y_label
+    if y_pct:
+        layout["yaxis"]["ticksuffix"] = "%"
     fig.update_layout(showlegend=False, **layout)
     return fig
 

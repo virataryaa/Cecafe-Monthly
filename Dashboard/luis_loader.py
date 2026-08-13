@@ -93,6 +93,36 @@ def granger_scan(exog_col, maxlag=MAX_LAG):
     return pd.DataFrame(rows)
 
 
+def lagged_merge_volume(type_, lag_months):
+    """`type_`'s ("Arabica" or "Robusta") own monthly export volume (K bags,
+    converted from the raw bag counts in the source file) joined to `type_`'s
+    own price series from `lag_months` earlier."""
+    vol_col = "Conillon" if type_ == "Robusta" else "Arabica"
+    vol = load_export_share()[["Date", vol_col]].rename(columns={vol_col: "Volume"})
+    vol["Volume"] = vol["Volume"] / 1000
+    prices = load_prices()[["Date", type_]].rename(columns={type_: "Price"}).copy()
+    prices["Date"] = prices["Date"] + pd.DateOffset(months=lag_months)
+    return vol.merge(prices, on="Date", how="inner").dropna()
+
+
+@st.cache_data
+def granger_scan_volume(type_, maxlag=MAX_LAG):
+    """Granger causality p-values: does `type_`'s own price (log MoM
+    change) help predict `type_`'s own export volume (log MoM change)?
+    Unlike the Robusta-price-vs-share relationship, this does NOT reach
+    significance at any lag for either Arabica or Robusta (best p ~ 0.07-0.09)
+    — kept in the dashboard as an exploratory view, not a validated finding."""
+    m = lagged_merge_volume(type_, 0).sort_values("Date").reset_index(drop=True)
+    d = pd.DataFrame({
+        "dVol": np.log(m["Volume"]).diff(),
+        "dPrice": np.log(m["Price"]).diff(),
+    }).dropna()
+
+    res = grangercausalitytests(d[["dVol", "dPrice"]], maxlag=maxlag, verbose=False)
+    rows = [{"Lag": lag, "PValue": res[lag][0]["ssr_ftest"][1]} for lag in range(1, maxlag + 1)]
+    return pd.DataFrame(rows)
+
+
 def current_read(lag):
     """Simple OLS of Robusta share on Robusta price at the given lag, fit
     on history, then applied to the latest available Robusta price to
