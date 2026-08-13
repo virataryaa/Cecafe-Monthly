@@ -73,16 +73,20 @@ def lagged_merge(share_df, lag_months):
 
 
 def lag_scan(share_df, max_lag=12):
-    """Pearson correlation between Robusta share and the Arabica-Robusta
-    spread at each lag from 0..max_lag months — used to find which lag
-    best explains the export mix, rather than assuming one."""
+    """Pearson correlation between Robusta share and each of Arabica price,
+    Robusta price, and the Arabica-Robusta spread, at each lag from
+    0..max_lag months — used to find which lag (and which of the three
+    price series) best explains the export mix, rather than assuming one."""
     rows = []
     for lag in range(max_lag + 1):
         merged = lagged_merge(share_df, lag)
         n = len(merged)
         if n >= 6:
-            r = merged["RobustaSharePct"].corr(merged["Spread"])
+            r_arabica = merged["RobustaSharePct"].corr(merged["Arabica"])
+            r_robusta = merged["RobustaSharePct"].corr(merged["Robusta"])
+            r_spread = merged["RobustaSharePct"].corr(merged["Spread"])
         else:
-            r = np.nan
-        rows.append({"Lag": lag, "Correlation": r, "N": n})
+            r_arabica = r_robusta = r_spread = np.nan
+        rows.append({"Lag": lag, "N": n, "Correlation": r_spread,
+                     "ArabicaCorr": r_arabica, "RobustaCorr": r_robusta, "SpreadCorr": r_spread})
     return pd.DataFrame(rows)

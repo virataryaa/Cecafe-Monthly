@@ -14,7 +14,7 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      share_spread_combined, prices_and_share_combined, scatter_share_vs_spread,
-                     lag_correlation_bar)
+                     lag_correlation_bar, lag_correlation_multi_bar)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 from price_loader import lag_scan, lagged_merge
 
@@ -383,3 +383,9 @@ with tab_insights:
                                      f"Correlation by Lag — {price_dest} (best: {best_lag}m)", height=PANEL_H),
                 use_container_width=True,
             )
+        st.plotly_chart(
+            lag_correlation_multi_bar(scan["Lag"], scan["ArabicaCorr"], scan["RobustaCorr"], scan["SpreadCorr"],
+                                       f"Correlation by Lag — Arabica vs Robusta vs Spread ({price_dest})",
+                                       height=PANEL_H),
+            use_container_width=True,
+        )
