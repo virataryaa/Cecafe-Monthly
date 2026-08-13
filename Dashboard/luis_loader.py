@@ -123,23 +123,3 @@ def granger_scan_volume(type_, maxlag=MAX_LAG):
     return pd.DataFrame(rows)
 
 
-def current_read(lag):
-    """Simple OLS of Robusta share on Robusta price at the given lag, fit
-    on history, then applied to the latest available Robusta price to
-    project where the share is headed ~lag months out. The residual std
-    gives a rough +/- band, not a formal confidence interval."""
-    m = lagged_merge(lag).sort_values("Date").reset_index(drop=True)
-    x = m["Robusta"].to_numpy()
-    y = m["RobustaSharePct"].to_numpy()
-    slope, intercept = np.polyfit(x, y, 1)
-    resid_std = (y - (slope * x + intercept)).std()
-
-    latest = load_prices().dropna(subset=["Robusta"]).iloc[-1]
-    projected_share = slope * latest["Robusta"] + intercept
-
-    return dict(
-        latest_price=latest["Robusta"], latest_date=latest["Date"],
-        projected_share=projected_share, resid_std=resid_std,
-        target_date=latest["Date"] + pd.DateOffset(months=lag),
-        lag=lag, n=len(m),
-    )

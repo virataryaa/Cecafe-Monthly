@@ -15,7 +15,7 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, lag_correlation_multi_bar,
                      robusta_price_share_combined, price_volume_combined, granger_pvalue_bar)
-from table_html import seasonal_table_html, summary_table_html, overview_table_html, current_read_card_html
+from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
@@ -350,9 +350,6 @@ with tab_price_impact:
 
     lag = st.slider("Lag (months)", 1, pi.MAX_LAG, value=default_lag, key="pi_lag",
                      help="Months by which Robusta price leads Robusta export share.")
-
-    read = pi.current_read(lag)
-    st.markdown(current_read_card_html(read), unsafe_allow_html=True)
 
     merged = pi.lagged_merge(lag)
     st.plotly_chart(

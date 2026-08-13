@@ -151,43 +151,6 @@ def overview_table_html(rows, title, prev_year, current_year):
     """)
 
 
-_READ_CARD_STYLE = f"""
-<style>
-.read-card {{ display: flex; gap: 28px; align-items: center; margin: 12px 0 20px;
-              padding: 18px 22px; border: 1px solid {GRID}; border-radius: 12px;
-              background: #fafaf8; box-shadow: 0 1px 4px rgba(11,11,11,0.05); }}
-.read-card-block {{ display: flex; flex-direction: column; }}
-.read-card-label {{ font-size: 10px; font-weight: 700; color: {MUTED};
-                     text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }}
-.read-card-value {{ font-size: 22px; font-weight: 800; color: {INK}; white-space: nowrap; }}
-.read-card-sub {{ font-size: 11px; color: {MUTED}; margin-top: 2px; }}
-.read-card-arrow {{ font-size: 20px; color: {MUTED}; }}
-</style>
-"""
-
-
-def current_read_card_html(read):
-    """A single headline stat card: today's Robusta price -> the historically
-    implied Robusta export share ~lag months out, with a rough +/- band."""
-    lo = read["projected_share"] - read["resid_std"]
-    hi = read["projected_share"] + read["resid_std"]
-    return _flatten(f"""
-    {_READ_CARD_STYLE}
-    <div class="read-card">
-      <div class="read-card-block">
-        <div class="read-card-label">Robusta Price ({read['latest_date'].strftime('%b %Y')})</div>
-        <div class="read-card-value">${read['latest_price']:,.0f}/bag</div>
-      </div>
-      <div class="read-card-arrow">&rarr;</div>
-      <div class="read-card-block">
-        <div class="read-card-label">Implied Robusta Share ({read['target_date'].strftime('%b %Y')})</div>
-        <div class="read-card-value">{read['projected_share']:.1f}%</div>
-        <div class="read-card-sub">Historical range: {lo:.1f}%&ndash;{hi:.1f}% &middot; based on {read['lag']}-month lag, n={read['n']} months</div>
-      </div>
-    </div>
-    """)
-
-
 def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
                          ytd_series=None, ytd_label="YTD",
                          full_series=None, full_label="Full Year"):
