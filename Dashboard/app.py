@@ -13,7 +13,7 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
-                     share_spread_multiples, scatter_share_vs_spread, lag_correlation_bar)
+                     share_spread_combined, scatter_share_vs_spread, lag_correlation_bar)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 from price_loader import lag_scan, lagged_merge
 
@@ -335,10 +335,10 @@ with tab_insights:
                 unsafe_allow_html=True)
     st.markdown(
         '<div class="card-desc">Monthly Robusta share of combined exports against the ICE Arabica-Robusta '
-        'futures spread (Arabica converted cents/lb &rarr; $/tonne, minus Robusta $/tonne, using rolled '
-        'continuous prices). Lag shifts the spread earlier relative to the share, since shipped volumes '
-        'reflect purchase decisions made months before export &mdash; the bar chart scans lags 0&ndash;12 '
-        'months and marks the one with the strongest correlation.</div>',
+        'second-month (c2) futures spread (Arabica converted cents/lb &rarr; $/tonne, minus Robusta $/tonne). '
+        'Lag shifts the spread earlier relative to the share, since shipped volumes reflect purchase '
+        'decisions made months before export &mdash; the bar chart scans lags 0&ndash;12 months and marks '
+        'the one with the strongest correlation.</div>',
         unsafe_allow_html=True,
     )
     price_dest = st.selectbox("Destination", [EUROPE_LABEL, TOTAL], key="insights_price_dest")
@@ -358,8 +358,8 @@ with tab_insights:
         st.info("Not enough overlapping price/export history to compare.")
     else:
         st.plotly_chart(
-            share_spread_multiples(merged["Date"], merged["Spread"], merged["Date"], merged["RobustaSharePct"],
-                                    f"Spread (lag {lag}m) vs Robusta Share — {price_dest}", height=PANEL_H + 60),
+            share_spread_combined(merged["Date"], merged["Spread"], merged["RobustaSharePct"],
+                                   f"Spread (lag {lag}m) vs Robusta Share — {price_dest}", height=PANEL_H + 60),
             use_container_width=True,
         )
         cols_ps = st.columns([1, 1])

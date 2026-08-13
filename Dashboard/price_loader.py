@@ -29,10 +29,17 @@ def _read_rollex_parquet(filename, columns):
 
 @st.cache_data
 def load_daily_spread():
-    """Daily roll-adjusted Arabica & Robusta prices ($/tonne) and their
-    spread (Arabica - Robusta), from the two Rollex parquet files."""
-    kc = _read_rollex_parquet("rollex_KC.parquet", ["rollex_px"]).rename(columns={"rollex_px": "Arabica"})
-    rc = _read_rollex_parquet("rollex_RC.parquet", ["rollex_px"]).rename(columns={"rollex_px": "Robusta"})
+    """Daily second-month (c2) Arabica & Robusta prices ($/tonne) and their
+    spread (Arabica - Robusta), from the two Rollex parquet files.
+
+    Uses `c2` (the actual second-nearby contract's settlement price), not
+    `rollex_px` (the back-adjusted continuous series). rollex_px is built to
+    preserve returns across contract rolls, which means it's anchored to
+    match today's price and drifts away from the real historical price the
+    further back you go (2.3x today's level by 2010) — great for backtesting
+    returns, wrong for reading a real historical dollar spread off it."""
+    kc = _read_rollex_parquet("rollex_KC.parquet", ["c2"]).rename(columns={"c2": "Arabica"})
+    rc = _read_rollex_parquet("rollex_RC.parquet", ["c2"]).rename(columns={"c2": "Robusta"})
     kc["Arabica"] = kc["Arabica"] * CENTS_LB_TO_USD_TONNE
 
     out = kc.join(rc, how="inner").sort_index()

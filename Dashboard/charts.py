@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 # Validated categorical slots (dark-mode steps) from the dataviz reference palette.
 SERIES = {
@@ -498,24 +497,23 @@ def monthly_mix_bars(dates, arabica, robusta, share_pct, title, height=None):
     return fig
 
 
-def share_spread_multiples(spread_dates, spread_vals, share_dates, share_vals, title, height=None):
-    """Stacked small multiples (shared x-axis) instead of a dual-axis chart —
-    top: Arabica-Robusta spread, bottom: Robusta export share — so the two
-    series' different scales don't force a misleading shared axis."""
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
-                         row_heights=[0.45, 0.55])
-    fig.add_trace(go.Scatter(x=spread_dates, y=spread_vals, mode="lines", connectgaps=True,
+def share_spread_combined(dates, spread_vals, share_vals, title, height=None):
+    """Spread and Robusta share overlaid on one chart. The two series live on
+    different scales ($/tonne vs %), so this uses a secondary y-axis — same
+    dual-axis pattern as monthly_mix_bars — rather than two separate panels,
+    so the eye can read the lead/lag relationship directly off one plot."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=dates, y=spread_vals, mode="lines", connectgaps=True,
                               line=dict(width=2, color=NAVY_SOFT), fill="tozeroy",
-                              fillcolor="rgba(61,93,133,0.08)", name="Spread"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=share_dates, y=share_vals, mode="lines+markers", connectgaps=True,
+                              fillcolor="rgba(61,93,133,0.10)", name="Spread ($/t)"))
+    fig.add_trace(go.Scatter(x=dates, y=share_vals, mode="lines+markers", connectgaps=True,
                               line=dict(width=2.5, color=SERIES["aqua"]), marker=dict(size=5),
-                              name="Robusta Share"), row=2, col=1)
+                              name="Robusta Share (%)", yaxis="y2"))
     layout = _layout(title, height)
-    fig.update_layout(showlegend=False, **layout)
-    fig.update_yaxes(title_text="Spread $/t", gridcolor=GRID, tickfont=dict(color=MUTED), row=1, col=1)
-    fig.update_yaxes(title_text="Robusta %", ticksuffix="%", gridcolor=GRID, tickfont=dict(color=MUTED), row=2, col=1)
-    fig.update_xaxes(gridcolor=GRID, tickfont=dict(color=MUTED), showticklabels=False, row=1, col=1)
-    fig.update_xaxes(gridcolor=GRID, tickfont=dict(color=MUTED), row=2, col=1)
+    layout["yaxis"]["title"] = "Spread $/t"
+    layout["yaxis2"] = dict(overlaying="y", side="right", ticksuffix="%",
+                             gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Robusta %")
+    fig.update_layout(showlegend=True, **layout)
     return fig
 
 
