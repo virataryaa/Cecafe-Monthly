@@ -517,6 +517,27 @@ def share_spread_combined(dates, spread_vals, share_vals, title, height=None):
     return fig
 
 
+def prices_and_share_combined(dates, arabica_vals, robusta_vals, share_vals, title, height=None):
+    """Arabica & Robusta c2 prices ($/tonne, primary axis) alongside Robusta
+    export share (%, secondary axis) — the two price legs on their own,
+    separate from the spread chart, so a level move in either leg is visible
+    on its own rather than only via the netted spread."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=dates, y=arabica_vals, mode="lines", connectgaps=True,
+                              name="Arabica ($/t)", line=dict(width=2, color=SERIES["blue"])))
+    fig.add_trace(go.Scatter(x=dates, y=robusta_vals, mode="lines", connectgaps=True,
+                              name="Robusta ($/t)", line=dict(width=2, color=SERIES["orange"])))
+    fig.add_trace(go.Scatter(x=dates, y=share_vals, mode="lines+markers", connectgaps=True,
+                              name="Robusta Share (%)", line=dict(width=2.5, color=INK),
+                              marker=dict(size=5), yaxis="y2"))
+    layout = _layout(title, height)
+    layout["yaxis"]["title"] = "$/tonne"
+    layout["yaxis2"] = dict(overlaying="y", side="right", ticksuffix="%",
+                             gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Robusta %")
+    fig.update_layout(showlegend=True, **layout)
+    return fig
+
+
 def scatter_share_vs_spread(spread_vals, share_vals, title, height=None):
     """One point per aligned month: spread (x) vs Robusta share (y), with an
     OLS trendline and Pearson r in the title — the direct level-vs-level

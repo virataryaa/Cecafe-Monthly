@@ -13,7 +13,8 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
-                     share_spread_combined, scatter_share_vs_spread, lag_correlation_bar)
+                     share_spread_combined, prices_and_share_combined, scatter_share_vs_spread,
+                     lag_correlation_bar)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 from price_loader import lag_scan, lagged_merge
 
@@ -360,6 +361,13 @@ with tab_insights:
         st.plotly_chart(
             share_spread_combined(merged["Date"], merged["Spread"], merged["RobustaSharePct"],
                                    f"Spread (lag {lag}m) vs Robusta Share — {price_dest}", height=PANEL_H + 60),
+            use_container_width=True,
+        )
+        st.plotly_chart(
+            prices_and_share_combined(merged["Date"], merged["Arabica"], merged["Robusta"],
+                                       merged["RobustaSharePct"],
+                                       f"Arabica & Robusta Prices (c2, lag {lag}m) vs Robusta Share — {price_dest}",
+                                       height=PANEL_H + 60),
             use_container_width=True,
         )
         cols_ps = st.columns([1, 1])
