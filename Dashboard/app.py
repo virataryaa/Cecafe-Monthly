@@ -12,8 +12,10 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
                           DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
-                     destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars)
+                     destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
+                     share_spread_multiples, scatter_share_vs_spread, lag_correlation_bar)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
+from price_loader import lag_scan, lagged_merge
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
 
@@ -328,3 +330,48 @@ with tab_insights:
                               height=PANEL_H),
             use_container_width=True,
         )
+
+    st.markdown('<div class="section-label">Robusta Share vs Arabica-Robusta Price Spread</div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Monthly Robusta share of combined exports against the ICE Arabica-Robusta '
+        'futures spread (Arabica converted cents/lb &rarr; $/tonne, minus Robusta $/tonne, using rolled '
+        'continuous prices). Lag shifts the spread earlier relative to the share, since shipped volumes '
+        'reflect purchase decisions made months before export &mdash; the bar chart scans lags 0&ndash;12 '
+        'months and marks the one with the strongest correlation.</div>',
+        unsafe_allow_html=True,
+    )
+    price_dest = st.selectbox("Destination", [EUROPE_LABEL, TOTAL], key="insights_price_dest")
+    share_full = monthly_type_mix(df, price_dest)[["Date", "RobustaSharePct"]].dropna()
+
+    scan = lag_scan(share_full, max_lag=12)
+    valid_scan = scan.dropna(subset=["Correlation"])
+    best_lag = int(valid_scan.loc[valid_scan["Correlation"].abs().idxmax(), "Lag"]) if not valid_scan.empty else 0
+
+    lag = st.slider(
+        "Lag (months)", 0, 12, value=best_lag, key=f"price_lag_{price_dest}",
+        help="Months by which the price spread leads the export share.",
+    )
+    merged = lagged_merge(share_full, lag)
+
+    if merged.empty:
+        st.info("Not enough overlapping price/export history to compare.")
+    else:
+        st.plotly_chart(
+            share_spread_multiples(merged["Date"], merged["Spread"], merged["Date"], merged["RobustaSharePct"],
+                                    f"Spread (lag {lag}m) vs Robusta Share — {price_dest}", height=PANEL_H + 60),
+            use_container_width=True,
+        )
+        cols_ps = st.columns([1, 1])
+        with cols_ps[0]:
+            st.plotly_chart(
+                scatter_share_vs_spread(merged["Spread"], merged["RobustaSharePct"],
+                                         f"Spread (lag {lag}m) vs Share — {price_dest}", height=PANEL_H),
+                use_container_width=True,
+            )
+        with cols_ps[1]:
+            st.plotly_chart(
+                lag_correlation_bar(scan["Lag"], scan["Correlation"], best_lag,
+                                     f"Correlation by Lag — {price_dest} (best: {best_lag}m)", height=PANEL_H),
+                use_container_width=True,
+            )

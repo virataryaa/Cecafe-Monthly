@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Validated categorical slots (dark-mode steps) from the dataviz reference palette.
 SERIES = {
@@ -494,6 +495,73 @@ def monthly_mix_bars(dates, arabica, robusta, share_pct, title, height=None):
     layout["yaxis2"] = dict(overlaying="y", side="right", range=[0, 100], ticksuffix="%",
                              gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False)
     fig.update_layout(**layout)
+    return fig
+
+
+def share_spread_multiples(spread_dates, spread_vals, share_dates, share_vals, title, height=None):
+    """Stacked small multiples (shared x-axis) instead of a dual-axis chart —
+    top: Arabica-Robusta spread, bottom: Robusta export share — so the two
+    series' different scales don't force a misleading shared axis."""
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
+                         row_heights=[0.45, 0.55])
+    fig.add_trace(go.Scatter(x=spread_dates, y=spread_vals, mode="lines", connectgaps=True,
+                              line=dict(width=2, color=NAVY_SOFT), fill="tozeroy",
+                              fillcolor="rgba(61,93,133,0.08)", name="Spread"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=share_dates, y=share_vals, mode="lines+markers", connectgaps=True,
+                              line=dict(width=2.5, color=SERIES["aqua"]), marker=dict(size=5),
+                              name="Robusta Share"), row=2, col=1)
+    layout = _layout(title, height)
+    fig.update_layout(showlegend=False, **layout)
+    fig.update_yaxes(title_text="Spread $/t", gridcolor=GRID, tickfont=dict(color=MUTED), row=1, col=1)
+    fig.update_yaxes(title_text="Robusta %", ticksuffix="%", gridcolor=GRID, tickfont=dict(color=MUTED), row=2, col=1)
+    fig.update_xaxes(gridcolor=GRID, tickfont=dict(color=MUTED), showticklabels=False, row=1, col=1)
+    fig.update_xaxes(gridcolor=GRID, tickfont=dict(color=MUTED), row=2, col=1)
+    return fig
+
+
+def scatter_share_vs_spread(spread_vals, share_vals, title, height=None):
+    """One point per aligned month: spread (x) vs Robusta share (y), with an
+    OLS trendline and Pearson r in the title — the direct level-vs-level
+    relationship at whatever lag the caller has already aligned on."""
+    x = np.asarray(spread_vals, dtype=float)
+    y = np.asarray(share_vals, dtype=float)
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x, y = x[mask], y[mask]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="markers",
+                              marker=dict(size=7, color=SERIES["blue"], opacity=0.75), name="Month"))
+    r = None
+    if len(x) >= 3 and x.std() > 0:
+        slope, intercept = np.polyfit(x, y, 1)
+        xr = np.linspace(x.min(), x.max(), 50)
+        fig.add_trace(go.Scatter(x=xr, y=slope * xr + intercept, mode="lines",
+                                  line=dict(width=2, color=INK, dash="dash"), name="Trend"))
+        r = np.corrcoef(x, y)[0, 1]
+
+    full_title = title if r is None else f"{title} (r = {r:+.2f}, n = {len(x)})"
+    layout = _layout(full_title, height)
+    layout["xaxis"]["title"] = "Arabica - Robusta Spread ($/tonne)"
+    layout["yaxis"]["title"] = "Robusta Share (%)"
+    layout["yaxis"]["ticksuffix"] = "%"
+    fig.update_layout(showlegend=False, **layout)
+    return fig
+
+
+def lag_correlation_bar(lags, corrs, best_lag, title, height=None):
+    """Pearson r between spread and Robusta share at each tested lag — bars
+    colored to pick out the strongest-magnitude lag, which is the one worth
+    reading the scatter/multiples charts at."""
+    colors = [INK if lag == best_lag else NAVY_SOFT for lag in lags]
+    text = [f"{c:+.2f}" if pd.notna(c) else "" for c in corrs]
+    fig = go.Figure(go.Bar(x=lags, y=corrs, marker=dict(color=colors),
+                            text=text, textposition="outside"))
+    layout = _layout(title, height)
+    layout["xaxis"]["title"] = "Lag (months, price precedes export share)"
+    layout["xaxis"]["dtick"] = 1
+    layout["yaxis"]["title"] = "Correlation (r)"
+    layout["yaxis"]["tickformat"] = ".2f"
+    fig.update_layout(showlegend=False, **layout)
     return fig
 
 
