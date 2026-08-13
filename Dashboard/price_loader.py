@@ -1,12 +1,16 @@
+import io
+import urllib.request
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-ROLLEX_DIR = Path(__file__).resolve().parents[3] / "ICEBREAKER" / "Rollex" / "Database"
-KC_PATH = ROLLEX_DIR / "rollex_KC.parquet"  # Arabica, cents/lb
-RC_PATH = ROLLEX_DIR / "rollex_RC.parquet"  # Robusta, $/tonne
+# Local network path (fast, used when this machine has the ICEBREAKER-Rollex
+# share mounted). Streamlit Cloud only mounts this repo, not that sibling
+# one, so it never has this path — falls back to the published GitHub copy.
+LOCAL_ROLLEX_DIR = Path(__file__).resolve().parents[3] / "ICEBREAKER" / "Rollex" / "Database"
+GITHUB_RAW_BASE = "https://raw.githubusercontent.com/virataryaa/ICEBREAKER-Rollex/main/Database"
 
 # KC is quoted in cents/lb, RC in $/tonne. 1 metric tonne = 2204.62 lb, so
 # cents/lb x 22.0462 = $/tonne — puts both legs on the same footing before
@@ -14,12 +18,21 @@ RC_PATH = ROLLEX_DIR / "rollex_RC.parquet"  # Robusta, $/tonne
 CENTS_LB_TO_USD_TONNE = 22.0462
 
 
+def _read_rollex_parquet(filename, columns):
+    local_path = LOCAL_ROLLEX_DIR / filename
+    if local_path.exists():
+        return pd.read_parquet(local_path, columns=columns)
+    with urllib.request.urlopen(f"{GITHUB_RAW_BASE}/{filename}", timeout=30) as resp:
+        raw = resp.read()
+    return pd.read_parquet(io.BytesIO(raw), columns=columns)
+
+
 @st.cache_data
 def load_daily_spread():
     """Daily roll-adjusted Arabica & Robusta prices ($/tonne) and their
     spread (Arabica - Robusta), from the two Rollex parquet files."""
-    kc = pd.read_parquet(KC_PATH, columns=["rollex_px"]).rename(columns={"rollex_px": "Arabica"})
-    rc = pd.read_parquet(RC_PATH, columns=["rollex_px"]).rename(columns={"rollex_px": "Robusta"})
+    kc = _read_rollex_parquet("rollex_KC.parquet", ["rollex_px"]).rename(columns={"rollex_px": "Arabica"})
+    rc = _read_rollex_parquet("rollex_RC.parquet", ["rollex_px"]).rename(columns={"rollex_px": "Robusta"})
     kc["Arabica"] = kc["Arabica"] * CENTS_LB_TO_USD_TONNE
 
     out = kc.join(rc, how="inner").sort_index()

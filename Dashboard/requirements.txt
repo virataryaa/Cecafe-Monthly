@@ -2,3 +2,4 @@ streamlit==1.56.0
 pandas
 plotly
 openpyxl
+pyarrow
