@@ -497,44 +497,41 @@ def monthly_mix_bars(dates, arabica, robusta, share_pct, title, height=None):
     return fig
 
 
-def share_spread_combined(dates, spread_vals, share_vals, title, height=None):
-    """Spread and Robusta share overlaid on one chart. The two series live on
-    different scales ($/tonne vs %), so this uses a secondary y-axis — same
-    dual-axis pattern as monthly_mix_bars — rather than two separate panels,
-    so the eye can read the lead/lag relationship directly off one plot."""
+def robusta_price_share_combined(dates, price_vals, share_vals, title, height=None):
+    """Robusta price ($/bag, primary axis) alongside Robusta export share
+    (%, secondary axis) — the one relationship that survived the Granger
+    causality test, so it gets its own dedicated chart rather than being
+    bundled with the legs that didn't hold up."""
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=dates, y=spread_vals, mode="lines", connectgaps=True,
-                              line=dict(width=2, color=NAVY_SOFT), fill="tozeroy",
-                              fillcolor="rgba(61,93,133,0.10)", name="Spread ($/t)"))
+    fig.add_trace(go.Scatter(x=dates, y=price_vals, mode="lines", connectgaps=True,
+                              line=dict(width=2, color=SERIES["orange"]), fill="tozeroy",
+                              fillcolor="rgba(217,89,38,0.10)", name="Robusta Price ($/bag)"))
     fig.add_trace(go.Scatter(x=dates, y=share_vals, mode="lines+markers", connectgaps=True,
-                              line=dict(width=2.5, color=SERIES["aqua"]), marker=dict(size=5),
+                              line=dict(width=2.5, color=INK), marker=dict(size=5),
                               name="Robusta Share (%)", yaxis="y2"))
     layout = _layout(title, height)
-    layout["yaxis"]["title"] = "Spread $/t"
+    layout["yaxis"]["title"] = "$/bag"
     layout["yaxis2"] = dict(overlaying="y", side="right", ticksuffix="%",
                              gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Robusta %")
     fig.update_layout(showlegend=True, **layout)
     return fig
 
 
-def prices_and_share_combined(dates, arabica_vals, robusta_vals, share_vals, title, height=None):
-    """Arabica & Robusta c2 prices ($/tonne, primary axis) alongside Robusta
-    export share (%, secondary axis) — the two price legs on their own,
-    separate from the spread chart, so a level move in either leg is visible
-    on its own rather than only via the netted spread."""
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=dates, y=arabica_vals, mode="lines", connectgaps=True,
-                              name="Arabica ($/t)", line=dict(width=2, color=SERIES["blue"])))
-    fig.add_trace(go.Scatter(x=dates, y=robusta_vals, mode="lines", connectgaps=True,
-                              name="Robusta ($/t)", line=dict(width=2, color=SERIES["orange"])))
-    fig.add_trace(go.Scatter(x=dates, y=share_vals, mode="lines+markers", connectgaps=True,
-                              name="Robusta Share (%)", line=dict(width=2.5, color=INK),
-                              marker=dict(size=5), yaxis="y2"))
+def granger_pvalue_bar(lags, pvalues, title, height=None, alpha=0.05):
+    """Granger causality p-value by lag, with a dashed line at the alpha
+    threshold — bars below the line are lags where the price series has
+    statistically significant predictive power over the share, not just a
+    correlation that might be coincidental."""
+    colors = [GOOD if p < alpha else MUTED for p in pvalues]
+    text = [f"{p:.3f}" for p in pvalues]
+    fig = go.Figure(go.Bar(x=lags, y=pvalues, marker=dict(color=colors),
+                            text=text, textposition="outside"))
+    fig.add_hline(y=alpha, line=dict(color=CRITICAL, width=1.5, dash="dash"))
     layout = _layout(title, height)
-    layout["yaxis"]["title"] = "$/tonne"
-    layout["yaxis2"] = dict(overlaying="y", side="right", ticksuffix="%",
-                             gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Robusta %")
-    fig.update_layout(showlegend=True, **layout)
+    layout["xaxis"]["title"] = "Lag (months)"
+    layout["xaxis"]["dtick"] = 1
+    layout["yaxis"]["title"] = "p-value"
+    fig.update_layout(showlegend=False, **layout)
     return fig
 
 
@@ -582,23 +579,6 @@ def lag_correlation_multi_bar(lags, arabica_corr, robusta_corr, spread_corr, tit
     layout["yaxis"]["title"] = "Correlation (r)"
     layout["yaxis"]["tickformat"] = ".2f"
     fig.update_layout(showlegend=True, **layout)
-    return fig
-
-
-def lag_correlation_bar(lags, corrs, best_lag, title, height=None):
-    """Pearson r between spread and Robusta share at each tested lag — bars
-    colored to pick out the strongest-magnitude lag, which is the one worth
-    reading the scatter/multiples charts at."""
-    colors = [INK if lag == best_lag else NAVY_SOFT for lag in lags]
-    text = [f"{c:+.2f}" if pd.notna(c) else "" for c in corrs]
-    fig = go.Figure(go.Bar(x=lags, y=corrs, marker=dict(color=colors),
-                            text=text, textposition="outside"))
-    layout = _layout(title, height)
-    layout["xaxis"]["title"] = "Lag (months, price precedes export share)"
-    layout["xaxis"]["dtick"] = 1
-    layout["yaxis"]["title"] = "Correlation (r)"
-    layout["yaxis"]["tickformat"] = ".2f"
-    fig.update_layout(showlegend=False, **layout)
     return fig
 
 
