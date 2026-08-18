@@ -497,6 +497,12 @@ def monthly_mix_bars(dates, arabica, robusta, share_pct, title, height=None):
     return fig
 
 
+def _fill_from_hex(hex_color, alpha=0.10):
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def price_share_combined(dates, price_vals, share_vals, price_label, share_label, title,
                           height=None, price_color=None):
     """A type's price ($/bag, primary axis) alongside its export share
@@ -505,7 +511,7 @@ def price_share_combined(dates, price_vals, share_vals, price_label, share_label
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=price_vals, mode="lines", connectgaps=True,
                               line=dict(width=2, color=price_color), fill="tozeroy",
-                              fillcolor="rgba(217,89,38,0.10)", name=price_label))
+                              fillcolor=_fill_from_hex(price_color), name=price_label))
     fig.add_trace(go.Scatter(x=dates, y=share_vals, mode="lines+markers", connectgaps=True,
                               line=dict(width=2.5, color=INK), marker=dict(size=5),
                               name=share_label, yaxis="y2"))
