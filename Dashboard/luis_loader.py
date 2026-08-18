@@ -8,29 +8,27 @@ from statsmodels.tsa.stattools import grangercausalitytests
 LUIS_PATH = Path(__file__).resolve().parent.parent / "Database" / "Luis data.xlsx"
 EXPORTS_PATH = Path(__file__).resolve().parent.parent / "Database" / "Brazil total exports.xlsx"
 
-# 60kg saca (the Brazilian trade bag) unit conversions.
-CENTS_LB_TO_USD_BAG = 1.32277   # NY (Arabica) cents/lb -> $/60kg bag
-USD_TONNE_TO_USD_BAG = 0.06     # London (Robusta) $/tonne -> $/60kg bag
-
 MAX_LAG = 12
+
+# Each price's native, unconverted unit from Luis's source file.
+PRICE_UNITS = {"Arabica": "¢/lb", "Robusta": "$/tonne"}
 
 
 @st.cache_data
 def load_prices():
-    """Daily NY (Arabica) & London (Robusta) futures from Luis's data,
-    converted to $/60kg bag (the Brazilian trade unit) and resampled to
-    monthly averages to match the export data's granularity."""
+    """Daily NY (Arabica, cents/lb) & London (Robusta, $/tonne) futures from
+    Luis's data, used in their native quoted units (no bag conversion),
+    resampled to monthly averages to match the export data's granularity."""
     raw = pd.read_excel(LUIS_PATH, sheet_name="Database", header=None, skiprows=2,
                          usecols=[0, 1, 2, 4], names=["Date", "NY", "London", "USD"])
     raw["Date"] = pd.to_datetime(raw["Date"])
     raw = raw.dropna(subset=["Date", "NY", "London", "USD"])
     raw = raw[(raw["NY"] > 0) & (raw["London"] > 0) & (raw["USD"] > 0)]
 
-    raw["Arabica"] = raw["NY"] * CENTS_LB_TO_USD_BAG
-    raw["Robusta"] = raw["London"] * USD_TONNE_TO_USD_BAG
-    raw["Spread"] = raw["Arabica"] - raw["Robusta"]
+    raw["Arabica"] = raw["NY"]
+    raw["Robusta"] = raw["London"]
 
-    return (raw.set_index("Date")[["Arabica", "Robusta", "Spread"]]
+    return (raw.set_index("Date")[["Arabica", "Robusta"]]
             .resample("MS").mean().reset_index())
 
 

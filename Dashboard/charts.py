@@ -504,9 +504,9 @@ def _fill_from_hex(hex_color, alpha=0.10):
 
 
 def price_share_combined(dates, price_vals, share_vals, price_label, share_label, title,
-                          height=None, price_color=None):
-    """A type's price ($/bag, primary axis) alongside its export share
-    (%, secondary axis)."""
+                          height=None, price_color=None, price_unit=""):
+    """A type's price (primary axis, in its own native unit) alongside its
+    export share (%, secondary axis)."""
     price_color = price_color or SERIES["orange"]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=price_vals, mode="lines", connectgaps=True,
@@ -516,18 +516,20 @@ def price_share_combined(dates, price_vals, share_vals, price_label, share_label
                               line=dict(width=2.5, color=INK), marker=dict(size=5),
                               name=share_label, yaxis="y2"))
     layout = _layout(title, height)
-    layout["yaxis"]["title"] = "$/bag"
+    layout["yaxis"]["title"] = price_unit
     layout["yaxis2"] = dict(overlaying="y", side="right", ticksuffix="%",
                              gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Share %")
     fig.update_layout(showlegend=True, **layout)
     return fig
 
 
-def price_volume_combined(dates, price_vals, volume_vals, price_label, volume_label, title, height=None):
-    """A type's own price (primary axis) alongside its own export volume
-    (K bags, secondary axis) — generic version of robusta_price_share_combined
-    for exploratory price-vs-own-volume views that haven't passed a
-    significance test, so the chart itself carries no implied validation."""
+def price_volume_combined(dates, price_vals, volume_vals, price_label, volume_label, title,
+                           height=None, price_unit=""):
+    """A type's own price (primary axis, native unit) alongside its own
+    export volume (K bags, secondary axis) — generic version of
+    price_share_combined for exploratory price-vs-own-volume views that
+    haven't passed a significance test, so the chart itself carries no
+    implied validation."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=price_vals, mode="lines", connectgaps=True,
                               line=dict(width=2, color=NAVY_SOFT), fill="tozeroy",
@@ -536,7 +538,7 @@ def price_volume_combined(dates, price_vals, volume_vals, price_label, volume_la
                               line=dict(width=2.5, color=SERIES["aqua"]), marker=dict(size=5),
                               name=volume_label, yaxis="y2"))
     layout = _layout(title, height)
-    layout["yaxis"]["title"] = "$/bag"
+    layout["yaxis"]["title"] = price_unit
     layout["yaxis2"] = dict(overlaying="y", side="right", gridcolor=GRID, tickfont=dict(color=MUTED),
                              showgrid=False, title="K bags")
     fig.update_layout(showlegend=True, **layout)
