@@ -585,24 +585,6 @@ def scatter_with_trend(x_vals, y_vals, x_label, y_label, title, height=None, y_p
     return fig
 
 
-def lag_correlation_multi_bar(lags, arabica_corr, robusta_corr, spread_corr, title, height=None):
-    """Grouped bars comparing Robusta share's correlation with Arabica price,
-    Robusta price, and the spread, at each lag — lets each price leg's own
-    explanatory power be read separately instead of only via the net spread."""
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=lags, y=arabica_corr, name="Arabica", marker=dict(color=SERIES["blue"])))
-    fig.add_trace(go.Bar(x=lags, y=robusta_corr, name="Robusta", marker=dict(color=SERIES["orange"])))
-    fig.add_trace(go.Bar(x=lags, y=spread_corr, name="Spread", marker=dict(color=NAVY_SOFT)))
-    layout = _layout(title, height)
-    layout["barmode"] = "group"
-    layout["xaxis"]["title"] = "Lag (months, price precedes export share)"
-    layout["xaxis"]["dtick"] = 1
-    layout["yaxis"]["title"] = "Correlation (r)"
-    layout["yaxis"]["tickformat"] = ".2f"
-    fig.update_layout(showlegend=True, **layout)
-    return fig
-
-
 def ytd_comparison(df_wide, year_cols, kind="flow", title=None, height=None):
     table, period_label = summary_table(df_wide, year_cols, kind)
     value_col = table.columns[1]

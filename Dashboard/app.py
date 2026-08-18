@@ -13,8 +13,8 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
-                     scatter_with_trend, lag_correlation_multi_bar,
-                     robusta_price_share_combined, price_volume_combined, granger_pvalue_bar)
+                     scatter_with_trend, robusta_price_share_combined,
+                     price_volume_combined, granger_pvalue_bar)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 
@@ -337,10 +337,9 @@ with tab_price_impact:
                 unsafe_allow_html=True)
     st.markdown(
         '<div class="card-desc">Brazil\'s total (world) coffee exports, Conillon (Robusta) vs Arabica, '
-        '1999&ndash;present. Of everything tested here &mdash; Arabica price, Robusta price, the '
+        '1999&ndash;present. Of everything tested &mdash; Arabica price, Robusta price, the '
         'Arabica-Robusta spread, and BRL/USD FX &mdash; only <b>Robusta\'s own price</b> passed a Granger '
-        'causality test as a genuine leading indicator of Robusta\'s export share, at a 7&ndash;12 month lag. '
-        'See "What we ruled out" below for the rest.</div>',
+        'causality test as a genuine leading indicator of Robusta\'s export share, at a 7&ndash;12 month lag.</div>',
         unsafe_allow_html=True,
     )
 
@@ -372,37 +371,6 @@ with tab_price_impact:
                                 "Granger Test: Robusta Price -> Share (p-value by lag)", height=PANEL_H),
             use_container_width=True,
         )
-
-    with st.expander("What we ruled out (Arabica price, spread, FX)"):
-        st.markdown(
-            '<div class="card-desc">Arabica price and the Arabica-Robusta spread show similar-looking '
-            'correlations to Robusta price at a glance, but neither passes the Granger test at any lag '
-            '(Arabica price: best p = 0.10; Spread: scattered significance, no consistent lag). A parallel '
-            'check of BRL/USD FX against Arabica export volume also failed a reverse-causality sanity check. '
-            'Correlation charts below are shown for transparency, not as evidence of a real relationship.</div>',
-            unsafe_allow_html=True,
-        )
-        scan = pi.lag_scan(max_lag=pi.MAX_LAG)
-        st.plotly_chart(
-            lag_correlation_multi_bar(scan["Lag"], scan["Arabica"], scan["Robusta"], scan["Spread"],
-                                       "Level Correlation by Lag — Arabica vs Robusta vs Spread", height=PANEL_H),
-            use_container_width=True,
-        )
-        cols_ruled_out = st.columns([1, 1])
-        with cols_ruled_out[0]:
-            granger_ar = pi.granger_scan("Arabica", maxlag=pi.MAX_LAG)
-            st.plotly_chart(
-                granger_pvalue_bar(granger_ar["Lag"], granger_ar["PValue"],
-                                    "Granger Test: Arabica Price -> Share (p-value by lag)", height=PANEL_H),
-                use_container_width=True,
-            )
-        with cols_ruled_out[1]:
-            granger_sp = pi.granger_scan("Spread", maxlag=pi.MAX_LAG)
-            st.plotly_chart(
-                granger_pvalue_bar(granger_sp["Lag"], granger_sp["PValue"],
-                                    "Granger Test: Spread -> Share (p-value by lag)", height=PANEL_H),
-                use_container_width=True,
-            )
 
     st.markdown('<div class="section-label">Export Volume vs Own Price (Arabica &amp; Robusta)</div>',
                 unsafe_allow_html=True)

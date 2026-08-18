@@ -57,24 +57,6 @@ def lagged_merge(lag_months):
     return share.merge(prices, on="Date", how="inner").dropna()
 
 
-def lag_scan(max_lag=MAX_LAG):
-    """Pearson correlation (price level vs share level) at each lag, for
-    Arabica, Robusta and the spread. Kept for transparency, but note: only
-    Robusta price survives the Granger causality test below — the level
-    correlations here (especially Arabica's and the spread's) are largely
-    trend artifacts, not evidence of a real relationship."""
-    rows = []
-    for lag in range(max_lag + 1):
-        m = lagged_merge(lag)
-        rows.append({
-            "Lag": lag, "N": len(m),
-            "Arabica": m["RobustaSharePct"].corr(m["Arabica"]),
-            "Robusta": m["RobustaSharePct"].corr(m["Robusta"]),
-            "Spread": m["RobustaSharePct"].corr(m["Spread"]),
-        })
-    return pd.DataFrame(rows)
-
-
 @st.cache_data
 def granger_scan(exog_col, maxlag=MAX_LAG):
     """Granger causality p-values: does `exog_col`'s month-over-month log
