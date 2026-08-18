@@ -497,22 +497,22 @@ def monthly_mix_bars(dates, arabica, robusta, share_pct, title, height=None):
     return fig
 
 
-def robusta_price_share_combined(dates, price_vals, share_vals, title, height=None):
-    """Robusta price ($/bag, primary axis) alongside Robusta export share
-    (%, secondary axis) — the one relationship that survived the Granger
-    causality test, so it gets its own dedicated chart rather than being
-    bundled with the legs that didn't hold up."""
+def price_share_combined(dates, price_vals, share_vals, price_label, share_label, title,
+                          height=None, price_color=None):
+    """A type's price ($/bag, primary axis) alongside its export share
+    (%, secondary axis)."""
+    price_color = price_color or SERIES["orange"]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=price_vals, mode="lines", connectgaps=True,
-                              line=dict(width=2, color=SERIES["orange"]), fill="tozeroy",
-                              fillcolor="rgba(217,89,38,0.10)", name="Robusta Price ($/bag)"))
+                              line=dict(width=2, color=price_color), fill="tozeroy",
+                              fillcolor="rgba(217,89,38,0.10)", name=price_label))
     fig.add_trace(go.Scatter(x=dates, y=share_vals, mode="lines+markers", connectgaps=True,
                               line=dict(width=2.5, color=INK), marker=dict(size=5),
-                              name="Robusta Share (%)", yaxis="y2"))
+                              name=share_label, yaxis="y2"))
     layout = _layout(title, height)
     layout["yaxis"]["title"] = "$/bag"
     layout["yaxis2"] = dict(overlaying="y", side="right", ticksuffix="%",
-                             gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Robusta %")
+                             gridcolor=GRID, tickfont=dict(color=MUTED), showgrid=False, title="Share %")
     fig.update_layout(showlegend=True, **layout)
     return fig
 

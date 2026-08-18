@@ -37,36 +37,37 @@ def load_prices():
 @st.cache_data
 def load_export_share():
     """Monthly Brazil total (world) coffee export volumes by type
-    (Conillon = Robusta, Arabica), and Conillon's share of the combined
+    (Conillon = Robusta, Arabica), and each type's share of the combined
     total — a global, not destination-specific, export mix."""
     raw = pd.read_excel(EXPORTS_PATH, sheet_name="Sheet1")
     raw.columns = ["Month", "Year", "Conillon", "Arabica"]
     raw["Date"] = pd.to_datetime(dict(year=raw["Year"], month=raw["Month"], day=1))
     raw["Total"] = raw["Conillon"] + raw["Arabica"]
     raw["RobustaSharePct"] = raw["Conillon"] / raw["Total"] * 100
-    return raw[["Date", "Conillon", "Arabica", "Total", "RobustaSharePct"]].dropna()
+    raw["ArabicaSharePct"] = raw["Arabica"] / raw["Total"] * 100
+    return raw[["Date", "Conillon", "Arabica", "Total", "RobustaSharePct", "ArabicaSharePct"]].dropna()
 
 
-def lagged_merge(lag_months):
-    """Robusta export share in month M joined to the price series from
+def lagged_merge(lag_months, share_col="RobustaSharePct"):
+    """`share_col`'s export share in month M joined to the price series from
     month (M - lag_months) — shipped volumes reflect price signals seen
     many months earlier, not the same month's price."""
-    share = load_export_share()[["Date", "RobustaSharePct", "Total"]]
+    share = load_export_share()[["Date", share_col, "Total"]]
     prices = load_prices().copy()
     prices["Date"] = prices["Date"] + pd.DateOffset(months=lag_months)
     return share.merge(prices, on="Date", how="inner").dropna()
 
 
 @st.cache_data
-def granger_scan(exog_col, maxlag=MAX_LAG):
+def granger_scan(exog_col, maxlag=MAX_LAG, share_col="RobustaSharePct"):
     """Granger causality p-values: does `exog_col`'s month-over-month log
-    change help predict Robusta share's month-over-month change, at each
+    change help predict `share_col`'s month-over-month change, at each
     lag from 1..maxlag? Uses log first-differences (verified stationary)
     rather than raw levels, since correlating two trending level series
     produces spurious results."""
-    m = lagged_merge(0).sort_values("Date").reset_index(drop=True)
+    m = lagged_merge(0, share_col).sort_values("Date").reset_index(drop=True)
     d = pd.DataFrame({
-        "dShare": m["RobustaSharePct"].diff(),
+        "dShare": m[share_col].diff(),
         "dExog": np.log(m[exog_col]).diff(),
     }).dropna()
 

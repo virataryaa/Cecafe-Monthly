@@ -13,8 +13,8 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
-                     scatter_with_trend, robusta_price_share_combined,
-                     price_volume_combined, granger_pvalue_bar)
+                     scatter_with_trend, price_share_combined,
+                     price_volume_combined, granger_pvalue_bar, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 
@@ -103,7 +103,7 @@ st.markdown(
 )
 st.write("")
 
-tab_detail, tab_insights, tab_price_impact = st.tabs(["Detail", "Insights", "Robusta Price Impact"])
+tab_detail, tab_insights, tab_price_impact = st.tabs(["Detail", "Insights", "Price vs Exports"])
 
 PANEL_H = 330
 
@@ -352,8 +352,10 @@ with tab_price_impact:
 
     merged = pi.lagged_merge(lag)
     st.plotly_chart(
-        robusta_price_share_combined(merged["Date"], merged["Robusta"], merged["RobustaSharePct"],
-                                      f"Robusta Price (lag {lag}m) vs Robusta Export Share", height=PANEL_H + 60),
+        price_share_combined(merged["Date"], merged["Robusta"], merged["RobustaSharePct"],
+                              "Robusta Price ($/bag)", "Robusta Share (%)",
+                              f"Robusta Price (lag {lag}m) vs Robusta Export Share", height=PANEL_H + 60,
+                              price_color=SERIES["orange"]),
         use_container_width=True,
     )
 
@@ -369,6 +371,47 @@ with tab_price_impact:
         st.plotly_chart(
             granger_pvalue_bar(granger["Lag"], granger["PValue"],
                                 "Granger Test: Robusta Price -> Share (p-value by lag)", height=PANEL_H),
+            use_container_width=True,
+        )
+
+    st.markdown('<div class="section-label">Arabica Price &rarr; Arabica Export Share</div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Same test, run on Arabica: does Arabica\'s own price help predict '
+        'Arabica\'s own share of total exports? <b>It does not pass the Granger test at any lag</b> '
+        '(best p &asymp; 0.10) &mdash; shown here in full, not summarized, so both commodities get the '
+        'same transparent treatment.</div>',
+        unsafe_allow_html=True,
+    )
+
+    granger_ar = pi.granger_scan("Arabica", maxlag=pi.MAX_LAG, share_col="ArabicaSharePct")
+    sig_lags_ar = granger_ar.loc[granger_ar["PValue"] < 0.05, "Lag"]
+    default_lag_ar = int(sig_lags_ar.max()) if not sig_lags_ar.empty else pi.MAX_LAG
+
+    lag_ar = st.slider("Lag (months)", 1, pi.MAX_LAG, value=default_lag_ar, key="pi_lag_arabica",
+                        help="Months by which Arabica price leads Arabica export share.")
+
+    merged_ar = pi.lagged_merge(lag_ar, share_col="ArabicaSharePct")
+    st.plotly_chart(
+        price_share_combined(merged_ar["Date"], merged_ar["Arabica"], merged_ar["ArabicaSharePct"],
+                              "Arabica Price ($/bag)", "Arabica Share (%)",
+                              f"Arabica Price (lag {lag_ar}m) vs Arabica Export Share", height=PANEL_H + 60,
+                              price_color=SERIES["blue"]),
+        use_container_width=True,
+    )
+
+    cols_ar = st.columns([1, 1])
+    with cols_ar[0]:
+        st.plotly_chart(
+            scatter_with_trend(merged_ar["Arabica"], merged_ar["ArabicaSharePct"],
+                                "Arabica Price ($/bag)", "Arabica Share (%)",
+                                f"Arabica Price (lag {lag_ar}m) vs Share", height=PANEL_H, y_pct=True),
+            use_container_width=True,
+        )
+    with cols_ar[1]:
+        st.plotly_chart(
+            granger_pvalue_bar(granger_ar["Lag"], granger_ar["PValue"],
+                                "Granger Test: Arabica Price -> Share (p-value by lag)", height=PANEL_H),
             use_container_width=True,
         )
 
