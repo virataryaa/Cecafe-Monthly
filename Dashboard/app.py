@@ -14,7 +14,7 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, SERIES, NAVY_SOFT)
+                     price_volume_combined, granger_pvalue_bar, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 
@@ -412,47 +412,6 @@ with tab_price_impact:
         st.plotly_chart(
             granger_pvalue_bar(granger_ar["Lag"], granger_ar["PValue"],
                                 "Granger Test: Arabica Price -> Share (p-value by lag)", height=PANEL_H),
-            use_container_width=True,
-        )
-
-    st.markdown('<div class="section-label">Arabica-Robusta Spread &rarr; Robusta Export Share</div>',
-                unsafe_allow_html=True)
-    st.markdown(
-        '<div class="card-desc">Spread = Arabica price minus Robusta price (both $/bag, same source as '
-        'above). Unlike Robusta\'s own price, the spread\'s Granger significance is scattered across lags '
-        '(some pass p&lt;0.05, others in between don\'t) rather than one clean contiguous run &mdash; '
-        'weaker, less trustworthy evidence than the Robusta-price relationship above.</div>',
-        unsafe_allow_html=True,
-    )
-
-    granger_sp = pi.granger_scan("Spread", maxlag=pi.MAX_LAG)
-    sig_lags_sp = granger_sp.loc[granger_sp["PValue"] < 0.05, "Lag"]
-    default_lag_sp = int(sig_lags_sp.max()) if not sig_lags_sp.empty else pi.MAX_LAG
-
-    lag_sp = st.slider("Lag (months)", 1, pi.MAX_LAG, value=default_lag_sp, key="pi_lag_spread",
-                        help="Months by which the Arabica-Robusta spread leads Robusta export share.")
-
-    merged_sp = pi.lagged_merge(lag_sp)
-    st.plotly_chart(
-        price_share_combined(merged_sp["Date"], merged_sp["Spread"], merged_sp["RobustaSharePct"],
-                              "Spread ($/bag)", "Robusta Share (%)",
-                              f"Spread (lag {lag_sp}m) vs Robusta Export Share", height=PANEL_H + 60,
-                              price_color=NAVY_SOFT),
-        use_container_width=True,
-    )
-
-    cols_sp = st.columns([1, 1])
-    with cols_sp[0]:
-        st.plotly_chart(
-            scatter_with_trend(merged_sp["Spread"], merged_sp["RobustaSharePct"],
-                                "Spread ($/bag)", "Robusta Share (%)",
-                                f"Spread (lag {lag_sp}m) vs Share", height=PANEL_H, y_pct=True),
-            use_container_width=True,
-        )
-    with cols_sp[1]:
-        st.plotly_chart(
-            granger_pvalue_bar(granger_sp["Lag"], granger_sp["PValue"],
-                                "Granger Test: Spread -> Share (p-value by lag)", height=PANEL_H),
             use_container_width=True,
         )
 
