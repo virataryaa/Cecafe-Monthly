@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from data_loader import MONTH_NAMES, PERIOD_ORDER, _crop_start, _crop_label
+from luis_loader import load_diffs
 
 ECONOMICS_PATH = Path(__file__).resolve().parent.parent / "Database" / "Cecafe Economics.xlsx"
 
@@ -49,3 +50,18 @@ def econ_wide(df, col):
     years = crop_year_order(df)
     pivot = pivot.reindex(columns=years).reset_index()
     return pivot
+
+
+@st.cache_data
+def diff_wide(type_):
+    """Luis's own weighted physical differential vs the exchange contract
+    (his figure, not derived from Cecafe's revenue/volume) — by crop year.
+    Only populated from 2014-05-30 onward, well short of the revenue/price
+    tables' 1990-present history."""
+    diffs = load_diffs()[["Date", type_]].rename(columns={type_: "Diff"}).dropna()
+    diffs["Year"] = diffs["Date"].dt.year
+    diffs["Month"] = diffs["Date"].dt.month
+    diffs["CropStart"] = diffs.apply(lambda r: _crop_start(int(r["Year"]), int(r["Month"])), axis=1)
+    diffs["CropYear"] = diffs["CropStart"].apply(_crop_label)
+    diffs["Period"] = diffs["Month"].map(MONTH_NAMES)
+    return econ_wide(diffs, "Diff")

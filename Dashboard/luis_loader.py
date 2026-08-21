@@ -32,6 +32,31 @@ def load_prices():
             .resample("MS").mean().reset_index())
 
 
+# Column positions (0-indexed, matching the file's own header row) of Luis's
+# own volume-weighted physical differential vs the exchange contract — his
+# figure, not one we derive ourselves.
+DIFF_COLS = [0, 55, 56]
+DIFF_UNIT = "¢/lb"
+
+
+@st.cache_data
+def load_diffs():
+    """Luis's own weighted physical/FOB differential vs NY (Arabica) or
+    London (Robusta), read directly from source rather than computed —
+    only populated from 2014-05-30 onward. One row in the raw sheet
+    (2014-05-30) has the header label typed into these cells instead of a
+    value; coercing to numeric turns that into NaN like any other gap."""
+    raw = pd.read_excel(LUIS_PATH, sheet_name="Database", header=None, skiprows=2,
+                         usecols=DIFF_COLS, names=["Date", "Arabica", "Robusta"])
+    raw["Date"] = pd.to_datetime(raw["Date"], errors="coerce")
+    raw["Arabica"] = pd.to_numeric(raw["Arabica"], errors="coerce")
+    raw["Robusta"] = pd.to_numeric(raw["Robusta"], errors="coerce")
+    raw = raw.dropna(subset=["Date"])
+
+    return (raw.set_index("Date")[["Arabica", "Robusta"]]
+            .resample("MS").mean().reset_index())
+
+
 @st.cache_data
 def load_export_share():
     """Monthly Brazil total (world) coffee export volumes by type

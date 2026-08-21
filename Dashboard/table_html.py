@@ -57,7 +57,7 @@ _STYLE = f"""
 def _fmt(v, unit):
     if unit == "%":
         return f"{v:.1f}%"
-    if unit in ("kg/ton", "$/bag"):
+    if unit in ("kg/ton", "$/bag", "¢/lb"):
         return f"{v:.1f}"
     return f"{v:,.0f}"
 
