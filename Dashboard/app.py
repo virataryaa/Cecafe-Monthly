@@ -533,11 +533,14 @@ with tab_economics:
         unsafe_allow_html=True,
     )
     for diff_type in ["Arabica", "Robusta"]:
-        diff_table = econ.diff_wide(diff_type)
-        st.markdown(
-            seasonal_table_html(diff_table, year_columns(diff_table),
-                                 title=f"{diff_type} — Weighted Differential vs Exchange", unit="¢/lb",
-                                 kind="ratio"),
-            unsafe_allow_html=True,
-        )
+        try:
+            diff_table = econ.diff_wide(diff_type)
+            st.markdown(
+                seasonal_table_html(diff_table, year_columns(diff_table),
+                                     title=f"{diff_type} — Weighted Differential vs Exchange", unit="¢/lb",
+                                     kind="ratio"),
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            st.warning(f"Couldn't load the {diff_type} differential table: {e}")
 
