@@ -443,7 +443,8 @@ def destination_heatmap(matrix_df, title, height=None):
     return fig
 
 
-def rolling_12m_line(dates, values, title="Rolling 12-Month Total", height=None, window=12):
+def rolling_12m_line(dates, values, title="Rolling 12-Month Total", height=None, window=12,
+                      yaxis_title="K bags"):
     """Trailing N-month sum, plotted continuously over the full chronological
     history (independent of crop-year boundaries) — smooths out seasonality
     so the underlying trend is visible."""
@@ -454,7 +455,7 @@ def rolling_12m_line(dates, values, title="Rolling 12-Month Total", height=None,
         fillcolor="rgba(61,93,133,0.08)",
     ))
     layout = _layout(title, height)
-    layout["yaxis"]["title"] = "K bags"
+    layout["yaxis"]["title"] = yaxis_title
     fig.update_layout(showlegend=False, **layout)
     return fig
 
@@ -590,6 +591,58 @@ def scatter_with_trend(x_vals, y_vals, x_label, y_label, title, height=None, y_p
     if y_pct:
         layout["yaxis"]["ticksuffix"] = "%"
     fig.update_layout(showlegend=False, **layout)
+    return fig
+
+
+def stacked_bars(dates, series, title, height=None, yaxis_title=None, colors=None):
+    """One stacked bar per series (e.g. Arabica + Robusta revenue) — same
+    calendar-month x-axis, values summed visually into a total."""
+    palette_cycle = colors or [SERIES["blue"], SERIES["orange"]]
+    fig = go.Figure()
+    for i, (name, vals) in enumerate(series):
+        fig.add_trace(go.Bar(x=dates, y=vals, name=name, marker=dict(color=palette_cycle[i % len(palette_cycle)])))
+    layout = _layout(title, height)
+    layout["barmode"] = "stack"
+    if yaxis_title:
+        layout["yaxis"]["title"] = yaxis_title
+    fig.update_layout(**layout)
+    return fig
+
+
+def dual_line(dates, series, title, height=None, yaxis_title=None, colors=None):
+    """Two or more series plotted as lines sharing one primary axis (only
+    valid when they're in comparable units, e.g. $/bag for both Arabica and
+    Robusta) — unlike price_share_combined/price_volume_combined, which
+    deliberately split mismatched units onto separate axes."""
+    palette_cycle = colors or [SERIES["blue"], SERIES["orange"], SERIES["aqua"], SERIES["magenta"]]
+    fig = go.Figure()
+    for i, (name, vals) in enumerate(series):
+        fig.add_trace(go.Scatter(x=dates, y=vals, mode="lines", name=name, connectgaps=True,
+                                  line=dict(width=2.2, color=palette_cycle[i % len(palette_cycle)])))
+    layout = _layout(title, height)
+    if yaxis_title:
+        layout["yaxis"]["title"] = yaxis_title
+    fig.update_layout(showlegend=True, **layout)
+    return fig
+
+
+def dual_axis_two_series(dates, y1, y2, label1, label2, title, height=None, unit1="", unit2="",
+                          color1=None, color2=None):
+    """Two series in different native units, each on its own axis — for
+    cross-checking Brazil's realized $/bag export price against the NY/London
+    futures quote (¢/lb or $/tonne), which can't share a scale with it."""
+    color1 = color1 or NAVY_SOFT
+    color2 = color2 or SERIES["orange"]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=dates, y=y1, mode="lines", name=label1, connectgaps=True,
+                              line=dict(width=2, color=color1)))
+    fig.add_trace(go.Scatter(x=dates, y=y2, mode="lines", name=label2, connectgaps=True,
+                              line=dict(width=2, color=color2), yaxis="y2"))
+    layout = _layout(title, height)
+    layout["yaxis"]["title"] = unit1
+    layout["yaxis2"] = dict(overlaying="y", side="right", gridcolor=GRID, tickfont=dict(color=MUTED),
+                             showgrid=False, title=unit2)
+    fig.update_layout(showlegend=True, **layout)
     return fig
 
 

@@ -14,9 +14,11 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, SERIES)
+                     price_volume_combined, granger_pvalue_bar, stacked_bars, dual_line,
+                     dual_axis_two_series, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
+import economics_loader as econ
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
 
@@ -103,7 +105,8 @@ st.markdown(
 )
 st.write("")
 
-tab_detail, tab_insights, tab_price_impact = st.tabs(["Detail", "Insights", "Price vs Exports"])
+tab_detail, tab_insights, tab_price_impact, tab_economics = st.tabs(
+    ["Detail", "Insights", "Price vs Exports", "Brazil Economics"])
 
 PANEL_H = 330
 
@@ -455,3 +458,113 @@ with tab_price_impact:
                                 height=PANEL_H),
             use_container_width=True,
         )
+
+with tab_economics:
+    df_econ = econ.load_economics()
+    year_cols_econ = econ.crop_year_order(df_econ)
+
+    st.markdown(
+        '<div class="card-desc">Brazil\'s coffee export <b>revenue</b> and <b>realized average export '
+        'price</b> (Revenue &divide; Volume), from Cecafe Economics &mdash; distinct from the physical '
+        'volumes in the Detail/Insights tabs and from the NY/London futures quotes in Price vs Exports. '
+        f'Monthly, {df_econ["Date"].min():%b %Y}&ndash;{df_econ["Date"].max():%b %Y}, no gaps.</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="section-label">Total Export Revenue</div>', unsafe_allow_html=True)
+    cols_rev = st.columns([1, 1])
+    with cols_rev[0]:
+        st.plotly_chart(
+            stacked_bars(df_econ["Date"],
+                         [("Arabica", df_econ[econ.COLS["Arabica"]["revenue"]]),
+                          ("Robusta", df_econ[econ.COLS["Robusta"]["revenue"]])],
+                         "Monthly Export Revenue", height=PANEL_H, yaxis_title="k USD"),
+            use_container_width=True,
+        )
+    with cols_rev[1]:
+        st.plotly_chart(
+            rolling_12m_line(df_econ["Date"], df_econ["Total Revenue"],
+                              "Rolling 12-Month Total Revenue", height=PANEL_H, yaxis_title="k USD"),
+            use_container_width=True,
+        )
+
+    st.markdown('<div class="section-label">Revenue Mix — Arabica vs Robusta</div>', unsafe_allow_html=True)
+    st.plotly_chart(
+        share_line(df_econ["Date"], df_econ["Robusta Revenue SharePct"],
+                   "Robusta Share of Combined Export Revenue", height=PANEL_H),
+        use_container_width=True,
+    )
+
+    st.markdown('<div class="section-label">Crop-Year Revenue (Jul&ndash;Jun)</div>', unsafe_allow_html=True)
+    st.markdown(
+        seasonal_table_html(econ.econ_wide(df_econ, "Total Revenue"), year_cols_econ,
+                             title="Total Export Revenue", unit="k USD", kind="flow"),
+        unsafe_allow_html=True,
+    )
+    cols_rev_split = st.columns([1, 1])
+    with cols_rev_split[0]:
+        st.markdown(
+            seasonal_table_html(econ.econ_wide(df_econ, econ.COLS["Arabica"]["revenue"]), year_cols_econ,
+                                 title="Arabica Export Revenue", unit="k USD", kind="flow"),
+            unsafe_allow_html=True,
+        )
+    with cols_rev_split[1]:
+        st.markdown(
+            seasonal_table_html(econ.econ_wide(df_econ, econ.COLS["Robusta"]["revenue"]), year_cols_econ,
+                                 title="Robusta Export Revenue", unit="k USD", kind="flow"),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div class="section-label">Realized Export Price per Bag</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Revenue &divide; Volume each month &mdash; Brazil\'s own blended '
+        'realized price, not a market quote.</div>',
+        unsafe_allow_html=True,
+    )
+    cols_price = st.columns([1, 1])
+    with cols_price[0]:
+        st.plotly_chart(
+            dual_line(df_econ["Date"],
+                      [("Arabica", df_econ[econ.COLS["Arabica"]["price"]]),
+                       ("Robusta", df_econ[econ.COLS["Robusta"]["price"]])],
+                      "Realized Price ($ per Bag) — Full History", height=PANEL_H, yaxis_title="$ per Bag"),
+            use_container_width=True,
+        )
+    with cols_price[1]:
+        vol_window = 12
+        ar_vol = df_econ[econ.COLS["Arabica"]["price"]].rolling(vol_window, min_periods=vol_window).std()
+        ro_vol = df_econ[econ.COLS["Robusta"]["price"]].rolling(vol_window, min_periods=vol_window).std()
+        st.plotly_chart(
+            dual_line(df_econ["Date"], [("Arabica", ar_vol), ("Robusta", ro_vol)],
+                      f"Price Volatility — Rolling {vol_window}-Month Std Dev", height=PANEL_H,
+                      yaxis_title="$ per Bag"),
+            use_container_width=True,
+        )
+
+    st.markdown('<div class="section-label">Realized Price vs Futures Price</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Brazil\'s realized $/bag export price against the matching NY (Arabica) '
+        'or London (Robusta) futures quote for the same month &mdash; a level cross-check, not a lagged '
+        'or causal test like the Price vs Exports tab.</div>',
+        unsafe_allow_html=True,
+    )
+    for pi_type in ["Arabica", "Robusta"]:
+        merged_px, futures_unit = econ.price_vs_futures(pi_type)
+        cols_px = st.columns([1, 1])
+        with cols_px[0]:
+            st.plotly_chart(
+                dual_axis_two_series(
+                    merged_px["Date"], merged_px["Realized"], merged_px["Futures"],
+                    "Realized ($/bag)", f"Futures ({futures_unit})",
+                    f"{pi_type} — Realized vs Futures Price", height=PANEL_H,
+                    unit1="$ per Bag", unit2=futures_unit,
+                ),
+                use_container_width=True,
+            )
+        with cols_px[1]:
+            st.plotly_chart(
+                scatter_with_trend(merged_px["Futures"], merged_px["Realized"],
+                                    f"Futures ({futures_unit})", "Realized ($/bag)",
+                                    f"{pi_type} — Futures vs Realized", height=PANEL_H),
+                use_container_width=True,
+            )
