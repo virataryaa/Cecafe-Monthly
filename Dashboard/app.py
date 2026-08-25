@@ -20,7 +20,7 @@ import luis_loader as pi
 import economics_loader as econ
 import comexstat_loader as cx
 
-st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
+st.set_page_config(page_title="Brazil: Cecafe, Luis & Comexstat", layout="wide")
 
 CSS = """
 <style>
