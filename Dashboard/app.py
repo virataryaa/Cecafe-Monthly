@@ -14,7 +14,8 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, signed_bar, SERIES)
+                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, signed_bar,
+                     signed_ranking_bar, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 import economics_loader as econ
@@ -681,4 +682,73 @@ with tab_comexstat:
                    yaxis_title="$/bag"),
         use_container_width=True,
     )
+
+    st.markdown('<div class="section-label">Further Analysis (Comexstat Only)</div>', unsafe_allow_html=True)
+
+    with st.expander("State × Port Routing"):
+        matrix = cx.state_port_matrix(df_cx, cx_crop_year)
+        if matrix.empty:
+            st.info("No data for this crop year.")
+        else:
+            st.plotly_chart(
+                destination_heatmap(matrix, f"State × Port — {cx_crop_year} (K bags)",
+                                     height=max(280, 40 * len(matrix) + 100)),
+                use_container_width=True,
+            )
+
+    with st.expander("Port Share of Total Exports Over Time"):
+        years_p, port_shares = cx.geo_share_trend(df_cx, "Port", top_n=5)
+        st.plotly_chart(
+            multi_line(years_p, port_shares, "Top 5 Ports — Share of Total Exports", height=PANEL_H,
+                       y_pct=True),
+            use_container_width=True,
+        )
+
+    with st.expander("State Share of Total Exports Over Time"):
+        years_s, state_shares = cx.geo_share_trend(df_cx, "State", top_n=5)
+        st.plotly_chart(
+            multi_line(years_s, state_shares, "Top 5 States — Share of Total Exports", height=PANEL_H,
+                       y_pct=True),
+            use_container_width=True,
+        )
+
+    with st.expander("Destination Concentration (HHI) Over Time"):
+        years_h, hhi_vals = cx.destination_hhi_trend(df_cx)
+        st.plotly_chart(
+            multi_line(years_h, [("HHI", hhi_vals)], "Destination HHI — Higher = More Concentrated",
+                       height=PANEL_H, yaxis_title="HHI (0-10,000)"),
+            use_container_width=True,
+        )
+
+    with st.expander("Fastest-Growing / Shrinking Destinations (YoY)"):
+        growth = cx.geo_yoy_growth(df_cx, "Destination", cx_crop_year)
+        if not growth:
+            st.info("No prior crop year to compare against.")
+        else:
+            top_growth = growth[:8] + growth[-8:]
+            seen, sel = set(), []
+            for k, v in top_growth:
+                if k not in seen:
+                    seen.add(k)
+                    sel.append((k, v))
+            st.plotly_chart(
+                signed_ranking_bar([k for k, _ in sel], [v for _, v in sel],
+                                    f"Destination YoY Growth — {cx_crop_year}",
+                                    height=max(PANEL_H, 30 * len(sel) + 80)),
+                use_container_width=True,
+            )
+
+    with st.expander("Non-Maritime Share of Exports Over Time"):
+        years_v, via_share = cx.non_maritime_share_trend(df_cx)
+        st.plotly_chart(
+            share_line(years_v, via_share, "Share of Exports Not Shipped by Sea", height=PANEL_H),
+            use_container_width=True,
+        )
+
+    with st.expander("Small / Unusual Destinations"):
+        small = cx.small_destinations(df_cx, cx_crop_year)
+        if small.empty:
+            st.info("No small-volume destinations for this crop year.")
+        else:
+            st.dataframe(small, use_container_width=True, hide_index=True)
 

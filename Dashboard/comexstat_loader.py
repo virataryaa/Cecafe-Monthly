@@ -8,6 +8,7 @@ from data_loader import MONTH_NAMES, PERIOD_ORDER, _crop_start, _crop_label
 COMEXSTAT_DIR = Path(__file__).resolve().parent.parent / "Database" / "Comexstat"
 COMEXSTAT_PATH = COMEXSTAT_DIR / "comexstat_coffee_exports.parquet"
 URF_PATH = COMEXSTAT_DIR / "ref_urf.csv"
+VIA_PATH = COMEXSTAT_DIR / "ref_via.csv"
 
 KG_PER_BAG = 60.0
 
@@ -94,6 +95,95 @@ def geo_price_totals(df, field, crop_year, top_n=10):
     grouped = grouped[grouped["bags"] > 0].sort_values("bags", ascending=False).head(top_n)
     grouped["price"] = grouped["fob"] / (grouped["bags"] * 1000)
     return list(zip(grouped.index, grouped["price"]))
+
+
+def state_port_matrix(df, crop_year, top_states=8, top_ports=8):
+    """State x Port matrix of Bags (K) for one crop year, restricted to
+    each side's biggest players — which states route through which ports."""
+    sub = df[df["CropYear"] == crop_year]
+    s_order = [s for s, _ in geo_totals(sub, "State")][:top_states]
+    p_order = [p for p, _ in geo_totals(sub, "Port")][:top_ports]
+    sub = sub[sub["State"].isin(s_order) & sub["Port"].isin(p_order)]
+    matrix = sub.pivot_table(index="State", columns="Port", values="Bags (K)", aggfunc="sum")
+    return matrix.reindex(index=s_order, columns=p_order)
+
+
+def geo_share_trend(df, field, top_n=5):
+    """% share of that crop year's total Bags (K), per crop year, for the
+    top_n entities (by all-time volume) — is any single state/port
+    gaining or losing share over time, not just its raw size."""
+    years = crop_year_order(df)
+    top_entities = [k for k, _ in geo_totals(df, field)][:top_n]
+    pivot = df.pivot_table(index="CropYear", columns=field, values="Bags (K)", aggfunc="sum")
+    pivot = pivot.reindex(years)
+    totals = df.groupby("CropYear")["Bags (K)"].sum().reindex(years)
+    shares = pivot[top_entities].div(totals, axis=0) * 100
+    return years, [(e, shares[e].tolist()) for e in top_entities]
+
+
+def destination_hhi_trend(df):
+    """Herfindahl-Hirschman Index of destination concentration per crop
+    year (0-10,000; higher = more concentrated in fewer buyers) — is
+    Brazil's coffee buyer base diversifying or consolidating over time."""
+    years = crop_year_order(df)
+    pivot = df.pivot_table(index="CropYear", columns="Destination", values="Bags (K)", aggfunc="sum")
+    pivot = pivot.reindex(years)
+    totals = pivot.sum(axis=1)
+    shares = pivot.div(totals, axis=0)
+    hhi = (shares ** 2).sum(axis=1) * 10000
+    return years, hhi.tolist()
+
+
+def geo_yoy_growth(df, field, crop_year, min_bags=20.0):
+    """Year-over-year % change per entity, crop year vs the prior one,
+    restricted to entities with at least min_bags K bags in either year
+    so a near-zero base can't produce a meaningless 5,000% swing.
+
+    Compared on a YTD-aligned basis — only the Jul-Jun periods the current
+    crop year has actually reported so far — so a partial current year
+    (e.g. just Jul) isn't compared against a prior full 12-month year,
+    which would show a fake ~90%+ "decline" everywhere."""
+    years = crop_year_order(df)
+    if crop_year not in years or years.index(crop_year) == 0:
+        return []
+    prev_year = years[years.index(crop_year) - 1]
+    covered = set(df.loc[df["CropYear"] == crop_year, "Period"])
+    periods = [p for p in PERIOD_ORDER if p in covered]
+
+    cur = df[(df["CropYear"] == crop_year) & (df["Period"].isin(periods))].groupby(field)["Bags (K)"].sum()
+    prev = df[(df["CropYear"] == prev_year) & (df["Period"].isin(periods))].groupby(field)["Bags (K)"].sum()
+    both = pd.concat([cur.rename("cur"), prev.rename("prev")], axis=1).fillna(0.0)
+    both = both[(both["cur"] >= min_bags) | (both["prev"] >= min_bags)]
+    both = both[both["prev"] > 0]
+    both["yoy"] = (both["cur"] - both["prev"]) / both["prev"] * 100
+    return list(both["yoy"].sort_values(ascending=False).items())
+
+
+def non_maritime_share_trend(df):
+    """% of exports NOT shipped by sea, per crop year — mostly road
+    (Mercosur land-border trade); a rising trend would flag more overland
+    trade than the historical near-100%-maritime norm."""
+    via = pd.read_csv(VIA_PATH, sep=";", encoding="latin1")
+    d = df.merge(via, on="CO_VIA", how="left")
+    years = crop_year_order(df)
+    pivot = d.pivot_table(index="CropYear", columns="NO_VIA", values="Bags (K)", aggfunc="sum")
+    pivot = pivot.reindex(years).fillna(0.0)
+    maritime = pivot["MARITIMA"] if "MARITIMA" in pivot.columns else 0.0
+    total = pivot.sum(axis=1)
+    share = ((total - maritime) / total * 100).fillna(0.0)
+    return years, share.tolist()
+
+
+def small_destinations(df, crop_year, max_bags=5.0):
+    """Destinations with a small but nonzero volume in one crop year —
+    surfaces odd/unexpected buyers (e.g. Colombia, itself a major producer,
+    buying Brazilian green coffee) worth a second look."""
+    sub = df[df["CropYear"] == crop_year]
+    grouped = sub.groupby("Destination").agg(**{
+        "Bags (K)": ("Bags (K)", "sum"), "FOB (USD)": ("VL_FOB", "sum")})
+    grouped = grouped[(grouped["Bags (K)"] > 0) & (grouped["Bags (K)"] <= max_bags)]
+    grouped["Price ($/bag)"] = grouped["FOB (USD)"] / (grouped["Bags (K)"] * 1000)
+    return grouped.sort_values("Bags (K)", ascending=False).reset_index()
 
 
 def monthly_totals(df):
