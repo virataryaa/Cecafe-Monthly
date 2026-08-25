@@ -58,23 +58,42 @@ def geo_monthly_series(df, field, entities, crop_years=None):
     return pivot
 
 
+def _geo_filter(df, field, entity):
+    """entity == 'Total' means every row for that field (no filter) — the
+    all-Brazil aggregate offered alongside individual states/ports/destinations."""
+    return df if entity == "Total" else df[df[field] == entity]
+
+
 def geo_long_run(df, field, entity):
-    """Full chronological monthly Bags (K) history for one State or Port —
-    feeds the drill-down time series chart."""
-    sub = df[df[field] == entity]
+    """Full chronological monthly Bags (K) history for one State, Port, or
+    Destination (or 'Total' for all of Brazil) — feeds the drill-down chart."""
+    sub = _geo_filter(df, field, entity)
     grouped = sub.groupby("Date", as_index=False)["Bags (K)"].sum().sort_values("Date")
     return grouped
 
 
 def geo_wide(df, field, entity):
-    """Period rows x CropYear columns of Bags (K) for one State or Port —
-    same shape seasonal_table_html expects elsewhere in this app."""
-    sub = df[df[field] == entity]
+    """Period rows x CropYear columns of Bags (K) for one State, Port, or
+    Destination (or 'Total') — same shape seasonal_table_html expects
+    elsewhere in this app."""
+    sub = _geo_filter(df, field, entity)
     pivot = sub.pivot_table(index="Period", columns="CropYear", values="Bags (K)", aggfunc="sum")
     pivot = pivot.reindex(PERIOD_ORDER)
     years = crop_year_order(df)
     pivot = pivot.reindex(columns=years).reset_index()
     return pivot
+
+
+def geo_price_totals(df, field, crop_year, top_n=10):
+    """FOB value / bag for the top_n largest entities (by volume) within
+    one crop year — restricted to each geography's biggest players so a
+    handful of tiny or odd shipments can't produce a misleading per-bag
+    price the way ranking by price directly would."""
+    sub = df[df["CropYear"] == crop_year]
+    grouped = sub.groupby(field).agg(bags=("Bags (K)", "sum"), fob=("VL_FOB", "sum"))
+    grouped = grouped[grouped["bags"] > 0].sort_values("bags", ascending=False).head(top_n)
+    grouped["price"] = grouped["fob"] / (grouped["bags"] * 1000)
+    return list(zip(grouped.index, grouped["price"]))
 
 
 def monthly_totals(df):

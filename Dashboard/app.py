@@ -546,25 +546,10 @@ with tab_economics:
             st.warning(f"Couldn't load the {diff_type} differential table: {e}")
 
 with tab_comexstat:
-    st.markdown(
-        '<div class="card-desc">Brazilian customs (Comexstat) green-coffee export data — an '
-        'independent source from CECAFE\'s own association reporting used everywhere else in this '
-        'app, with two things CECAFE\'s data doesn\'t have: which <b>Brazilian state</b> each shipment '
-        'left from, and which <b>port/customs office</b> it cleared through. Covers all green coffee '
-        '(HS/NCM 0901.11 &amp; 0901.12) without an Arabica/Robusta tag of its own — 1997–present.</div>',
-        unsafe_allow_html=True,
-    )
-
     df_cx = cx.load_comexstat()
     cx_years = cx.crop_year_order(df_cx)
 
     st.markdown('<div class="section-label">State of Origin</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="card-desc">Minas Gerais and S&atilde;o Paulo are Arabica heartland; '
-        'Esp&iacute;rito Santo and Rond&ocirc;nia are almost pure Conilon/Robusta &mdash; so this '
-        'geography is itself a rough variety signal, independent of any type tag.</div>',
-        unsafe_allow_html=True,
-    )
     cx_crop_year = st.selectbox("Crop Year", cx_years, index=len(cx_years) - 1, key="cx_crop_year")
     recent_years = cx_years[-4:]
 
@@ -592,11 +577,6 @@ with tab_comexstat:
         )
 
     st.markdown('<div class="section-label">Port / Customs Office</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="card-desc">Which customs post the coffee physically cleared through — a '
-        'logistics view with no equivalent in the CECAFE-sourced tabs.</div>',
-        unsafe_allow_html=True,
-    )
     cols_port = st.columns([1, 1])
     with cols_port[0]:
         port_totals = cx.geo_totals(df_cx, "Port", crop_year=cx_crop_year)
@@ -621,19 +601,18 @@ with tab_comexstat:
         )
 
     st.markdown('<div class="section-label">Time Series &amp; Seasonal Detail</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="card-desc">Drill into one state or one port: full monthly history, plus the '
-        'Jul&ndash;Jun seasonal table used throughout this app.</div>',
-        unsafe_allow_html=True,
-    )
-    geo_field = st.radio("Group by", ["State", "Port"], horizontal=True, key="cx_geo_field")
-    geo_options = [k for k, _ in cx.geo_totals(df_cx, geo_field)]
+    geo_field = st.radio("Group by", ["State", "Port", "Destination"], horizontal=True, key="cx_geo_field")
+    geo_options = ["Total"] + [k for k, _ in cx.geo_totals(df_cx, geo_field)]
     geo_entity = st.selectbox(geo_field, geo_options, key=f"cx_geo_entity_{geo_field}")
 
     geo_series = cx.geo_long_run(df_cx, geo_field, geo_entity)
+    window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
+                       format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
+                       key=f"cx_rolling_window_{geo_field}_{geo_entity}", label_visibility="collapsed")
     st.plotly_chart(
-        long_run_line(geo_series["Date"], geo_series["Bags (K)"],
-                      f"{geo_entity} — Exports, Full History (K bags)", height=PANEL_H),
+        rolling_12m_line(geo_series["Date"], geo_series["Bags (K)"],
+                          title=f"{geo_entity} — Rolling {window}-Month Total (K bags)", height=PANEL_H,
+                          window=window),
         use_container_width=True,
     )
     geo_table = cx.geo_wide(df_cx, geo_field, geo_entity)
@@ -642,21 +621,30 @@ with tab_comexstat:
         unsafe_allow_html=True,
     )
 
+    st.markdown('<div class="section-label">FOB Price per Bag — by Geography</div>', unsafe_allow_html=True)
+    cols_price = st.columns(3)
+    for col, field in zip(cols_price, ["State", "Port", "Destination"]):
+        with col:
+            price_data = cx.geo_price_totals(df_cx, field, cx_crop_year, top_n=10)
+            if price_data:
+                pr_labels = [k for k, _ in price_data]
+                pr_values = [v for _, v in price_data]
+                st.plotly_chart(
+                    ranking_bar(pr_labels, pr_values, f"{field} — $/bag ({cx_crop_year})",
+                                top_n=len(pr_labels), height=max(PANEL_H, 30 * len(pr_labels) + 80)),
+                    use_container_width=True,
+                )
+            else:
+                st.info("No data for this crop year.")
+
     st.markdown('<div class="section-label">Reconciliation vs CECAFE</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="card-desc">Comexstat is customs-clearance data; CECAFE is association-reported '
-        'shipment data — different methodologies measuring the same underlying trade. Volume in K '
-        'bags, price as FOB value &divide; volume ($/bag, both types combined since Comexstat carries '
-        'no variety tag). Consistent lines/tight scatter validate both sources; a persistent gap '
-        'points to a timing or definitional difference worth digging into.</div>',
-        unsafe_allow_html=True,
-    )
     cx_monthly = cx.monthly_totals(df_cx)
     df_econ_recon = econ.load_economics()
     recon = cx_monthly.merge(
         df_econ_recon[["Date", "Total Volume", "Total Revenue"]], on="Date", how="inner")
     recon["CECAFE Bags (K)"] = recon["Total Volume"] / 1000.0
     recon["CECAFE Price ($/bag)"] = recon["Total Revenue"] * 1000.0 / recon["Total Volume"]
+    recon["Running Delta (K bags)"] = (recon["CECAFE Bags (K)"] - recon["Bags (K)"]).cumsum()
 
     cols_recon = st.columns([1, 1])
     with cols_recon[0]:
@@ -674,6 +662,11 @@ with tab_comexstat:
                                 "Monthly Export Volume — Comexstat vs CECAFE", height=PANEL_H),
             use_container_width=True,
         )
+    st.plotly_chart(
+        long_run_line(recon["Date"], recon["Running Delta (K bags)"],
+                      "Running Delta — CECAFE minus Comexstat (K bags, cumulative)", height=PANEL_H),
+        use_container_width=True,
+    )
     st.plotly_chart(
         multi_line(recon["Date"],
                    [("Comexstat", recon["Price ($/bag)"]), ("CECAFE", recon["CECAFE Price ($/bag)"])],
