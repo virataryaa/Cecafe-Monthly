@@ -744,24 +744,6 @@ with tab_comexstat:
             use_container_width=True,
         )
 
-    with st.expander("Concentration (HHI) Over Time"):
-        st.markdown(
-            '<div class="card-desc">The Herfindahl-Hirschman Index: square each entity\'s % share of '
-            'that crop year\'s exports, then add them up. <b>HHI = &Sigma; (share<sub>i</sub> '
-            '&times; 100)&sup2;</b>. Ranges 0&ndash;10,000 &mdash; higher means exports are '
-            'concentrated in fewer states/ports/buyers, lower means they\'re spread across many. A '
-            'single entity taking 100% would score 10,000; 10 equal entities would score 1,000.</div>',
-            unsafe_allow_html=True,
-        )
-        hhi_field = st.radio("Group by", ["State", "Port", "Destination"], horizontal=True,
-                              key="cx_hhi_field")
-        years_h, hhi_vals = cx.hhi_trend(df_cx, hhi_field)
-        st.plotly_chart(
-            multi_line(years_h, [("HHI", hhi_vals)], f"{hhi_field} HHI — Higher = More Concentrated",
-                       height=PANEL_H, yaxis_title="HHI (0-10,000)"),
-            use_container_width=True,
-        )
-
     with st.expander("Non-Maritime Share of Exports Over Time"):
         st.markdown(
             '<div class="card-desc">Almost all Brazilian coffee leaves by ship. This shows the small '

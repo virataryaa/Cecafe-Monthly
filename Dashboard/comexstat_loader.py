@@ -122,20 +122,6 @@ def geo_share_trend(df, field, top_n=5):
     return years, [(e, shares[e].tolist()) for e in top_entities]
 
 
-def hhi_trend(df, field):
-    """Herfindahl-Hirschman Index of concentration per crop year for any
-    field (State/Port/Destination) — 0-10,000; higher = more concentrated
-    in fewer entities. For Destination it's buyer concentration; for
-    State/Port it's how concentrated Brazil's own export geography is."""
-    years = crop_year_order(df)
-    pivot = df.pivot_table(index="CropYear", columns=field, values="Bags (K)", aggfunc="sum")
-    pivot = pivot.reindex(years)
-    totals = pivot.sum(axis=1)
-    shares = pivot.div(totals, axis=0)
-    hhi = (shares ** 2).sum(axis=1) * 10000
-    return years, hhi.tolist()
-
-
 def geo_value_totals(df, field, crop_year, top_n=10):
     """Total FOB value ($M) per entity for one crop year, descending, capped
     to the top_n — who brings in the most export revenue, not just volume."""
