@@ -134,31 +134,6 @@ def destination_hhi_trend(df):
     return years, hhi.tolist()
 
 
-def geo_yoy_growth(df, field, crop_year, min_bags=20.0):
-    """Year-over-year % change per entity, crop year vs the prior one,
-    restricted to entities with at least min_bags K bags in either year
-    so a near-zero base can't produce a meaningless 5,000% swing.
-
-    Compared on a YTD-aligned basis — only the Jul-Jun periods the current
-    crop year has actually reported so far — so a partial current year
-    (e.g. just Jul) isn't compared against a prior full 12-month year,
-    which would show a fake ~90%+ "decline" everywhere."""
-    years = crop_year_order(df)
-    if crop_year not in years or years.index(crop_year) == 0:
-        return []
-    prev_year = years[years.index(crop_year) - 1]
-    covered = set(df.loc[df["CropYear"] == crop_year, "Period"])
-    periods = [p for p in PERIOD_ORDER if p in covered]
-
-    cur = df[(df["CropYear"] == crop_year) & (df["Period"].isin(periods))].groupby(field)["Bags (K)"].sum()
-    prev = df[(df["CropYear"] == prev_year) & (df["Period"].isin(periods))].groupby(field)["Bags (K)"].sum()
-    both = pd.concat([cur.rename("cur"), prev.rename("prev")], axis=1).fillna(0.0)
-    both = both[(both["cur"] >= min_bags) | (both["prev"] >= min_bags)]
-    both = both[both["prev"] > 0]
-    both["yoy"] = (both["cur"] - both["prev"]) / both["prev"] * 100
-    return list(both["yoy"].sort_values(ascending=False).items())
-
-
 def non_maritime_share_trend(df):
     """% of exports NOT shipped by sea, per crop year — mostly road
     (Mercosur land-border trade); a rising trend would flag more overland
@@ -172,18 +147,6 @@ def non_maritime_share_trend(df):
     total = pivot.sum(axis=1)
     share = ((total - maritime) / total * 100).fillna(0.0)
     return years, share.tolist()
-
-
-def small_destinations(df, crop_year, max_bags=5.0):
-    """Destinations with a small but nonzero volume in one crop year —
-    surfaces odd/unexpected buyers (e.g. Colombia, itself a major producer,
-    buying Brazilian green coffee) worth a second look."""
-    sub = df[df["CropYear"] == crop_year]
-    grouped = sub.groupby("Destination").agg(**{
-        "Bags (K)": ("Bags (K)", "sum"), "FOB (USD)": ("VL_FOB", "sum")})
-    grouped = grouped[(grouped["Bags (K)"] > 0) & (grouped["Bags (K)"] <= max_bags)]
-    grouped["Price ($/bag)"] = grouped["FOB (USD)"] / (grouped["Bags (K)"] * 1000)
-    return grouped.sort_values("Bags (K)", ascending=False).reset_index()
 
 
 def monthly_totals(df):

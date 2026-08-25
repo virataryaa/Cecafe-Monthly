@@ -397,27 +397,6 @@ def signed_bar(x, y, title, height=None, yaxis_title=None):
     return fig
 
 
-def signed_ranking_bar(labels, values, title, height=None):
-    """Horizontal bars colored by sign — for a YoY growth/decline ranking
-    where the biggest gainers and biggest decliners are shown together."""
-    pairs = sorted(zip(labels, values), key=lambda p: p[1], reverse=True)[::-1]
-    labels_sorted = [p[0] for p in pairs]
-    values_sorted = [p[1] for p in pairs]
-    colors = [GOOD if v >= 0 else CRITICAL for v in values_sorted]
-
-    fig = go.Figure(go.Bar(
-        x=values_sorted, y=labels_sorted, orientation="h",
-        marker=dict(color=colors),
-        text=[f"{v:+.0f}%" for v in values_sorted], textposition="outside",
-    ))
-    layout = _layout(title, height)
-    layout["xaxis"]["title"] = None
-    layout["xaxis"]["ticksuffix"] = "%"
-    layout["margin"] = dict(l=10, r=40, t=50, b=30)
-    fig.update_layout(showlegend=False, **layout)
-    return fig
-
-
 def multi_line(x_vals, series, title, height=None, yaxis_title=None, y_pct=False):
     """Overlays one line per named series on a shared x-axis and y-axis
     (same units) — e.g. two independent sources' readings of the same

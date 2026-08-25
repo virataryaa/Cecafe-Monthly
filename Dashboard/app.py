@@ -14,8 +14,7 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, signed_bar,
-                     signed_ranking_bar, SERIES)
+                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, signed_bar, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 import economics_loader as econ
@@ -716,6 +715,14 @@ with tab_comexstat:
         )
 
     with st.expander("Destination Concentration (HHI) Over Time"):
+        st.markdown(
+            '<div class="card-desc">The Herfindahl-Hirschman Index: square each destination\'s % '
+            'share of that crop year\'s exports, then add them up. <b>HHI = &Sigma; (share<sub>i</sub> '
+            '&times; 100)&sup2;</b>. Ranges 0&ndash;10,000 &mdash; higher means exports are '
+            'concentrated in fewer buyers, lower means they\'re spread across many. A single buyer '
+            'taking 100% would score 10,000; 10 equal buyers would score 1,000.</div>',
+            unsafe_allow_html=True,
+        )
         years_h, hhi_vals = cx.destination_hhi_trend(df_cx)
         st.plotly_chart(
             multi_line(years_h, [("HHI", hhi_vals)], "Destination HHI — Higher = More Concentrated",
@@ -723,35 +730,15 @@ with tab_comexstat:
             use_container_width=True,
         )
 
-    with st.expander("Fastest-Growing / Shrinking Destinations (YoY)"):
-        growth = cx.geo_yoy_growth(df_cx, "Destination", cx_crop_year)
-        if not growth:
-            st.info("No prior crop year to compare against.")
-        else:
-            top_growth = growth[:8] + growth[-8:]
-            seen, sel = set(), []
-            for k, v in top_growth:
-                if k not in seen:
-                    seen.add(k)
-                    sel.append((k, v))
-            st.plotly_chart(
-                signed_ranking_bar([k for k, _ in sel], [v for _, v in sel],
-                                    f"Destination YoY Growth — {cx_crop_year}",
-                                    height=max(PANEL_H, 30 * len(sel) + 80)),
-                use_container_width=True,
-            )
-
     with st.expander("Non-Maritime Share of Exports Over Time"):
+        st.markdown(
+            '<div class="card-desc">Almost all Brazilian coffee leaves by ship. This shows the small '
+            'slice that instead goes by truck, mostly over land borders to neighboring countries.</div>',
+            unsafe_allow_html=True,
+        )
         years_v, via_share = cx.non_maritime_share_trend(df_cx)
         st.plotly_chart(
             share_line(years_v, via_share, "Share of Exports Not Shipped by Sea", height=PANEL_H),
             use_container_width=True,
         )
-
-    with st.expander("Small / Unusual Destinations"):
-        small = cx.small_destinations(df_cx, cx_crop_year)
-        if small.empty:
-            st.info("No small-volume destinations for this crop year.")
-        else:
-            st.dataframe(small, use_container_width=True, hide_index=True)
 
