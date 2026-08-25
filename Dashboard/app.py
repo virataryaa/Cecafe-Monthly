@@ -549,6 +549,27 @@ with tab_comexstat:
     df_cx = cx.load_comexstat()
     cx_years = cx.crop_year_order(df_cx)
 
+    st.markdown('<div class="section-label">Time Series &amp; Seasonal Detail</div>', unsafe_allow_html=True)
+    geo_field = st.radio("Group by", ["State", "Port", "Destination"], horizontal=True, key="cx_geo_field")
+    geo_options = ["Total"] + [k for k, _ in cx.geo_totals(df_cx, geo_field)]
+    geo_entity = st.selectbox(geo_field, geo_options, key=f"cx_geo_entity_{geo_field}")
+
+    geo_series = cx.geo_long_run(df_cx, geo_field, geo_entity)
+    window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
+                       format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
+                       key=f"cx_rolling_window_{geo_field}_{geo_entity}", label_visibility="collapsed")
+    st.plotly_chart(
+        rolling_12m_line(geo_series["Date"], geo_series["Bags (K)"],
+                          title=f"{geo_entity} — Rolling {window}-Month Total (K bags)", height=PANEL_H,
+                          window=window),
+        use_container_width=True,
+    )
+    geo_table = cx.geo_wide(df_cx, geo_field, geo_entity)
+    st.markdown(
+        seasonal_table_html(geo_table, cx_years, title=f"{geo_entity} Exports", unit="K bags", kind="flow"),
+        unsafe_allow_html=True,
+    )
+
     st.markdown('<div class="section-label">State of Origin</div>', unsafe_allow_html=True)
     cx_crop_year = st.selectbox("Crop Year", cx_years, index=len(cx_years) - 1, key="cx_crop_year")
     recent_years = cx_years[-4:]
@@ -599,27 +620,6 @@ with tab_comexstat:
                          height=PANEL_H, yaxis_title="K bags", colors=list(SERIES.values())),
             use_container_width=True,
         )
-
-    st.markdown('<div class="section-label">Time Series &amp; Seasonal Detail</div>', unsafe_allow_html=True)
-    geo_field = st.radio("Group by", ["State", "Port", "Destination"], horizontal=True, key="cx_geo_field")
-    geo_options = ["Total"] + [k for k, _ in cx.geo_totals(df_cx, geo_field)]
-    geo_entity = st.selectbox(geo_field, geo_options, key=f"cx_geo_entity_{geo_field}")
-
-    geo_series = cx.geo_long_run(df_cx, geo_field, geo_entity)
-    window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
-                       format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
-                       key=f"cx_rolling_window_{geo_field}_{geo_entity}", label_visibility="collapsed")
-    st.plotly_chart(
-        rolling_12m_line(geo_series["Date"], geo_series["Bags (K)"],
-                          title=f"{geo_entity} — Rolling {window}-Month Total (K bags)", height=PANEL_H,
-                          window=window),
-        use_container_width=True,
-    )
-    geo_table = cx.geo_wide(df_cx, geo_field, geo_entity)
-    st.markdown(
-        seasonal_table_html(geo_table, cx_years, title=f"{geo_entity} Exports", unit="K bags", kind="flow"),
-        unsafe_allow_html=True,
-    )
 
     st.markdown('<div class="section-label">FOB Price per Bag — by Geography</div>', unsafe_allow_html=True)
     cols_price = st.columns(3)
