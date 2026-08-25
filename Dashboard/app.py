@@ -14,7 +14,7 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, SERIES)
+                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, signed_bar, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 import economics_loader as econ
@@ -644,7 +644,8 @@ with tab_comexstat:
         df_econ_recon[["Date", "Total Volume", "Total Revenue"]], on="Date", how="inner")
     recon["CECAFE Bags (K)"] = recon["Total Volume"] / 1000.0
     recon["CECAFE Price ($/bag)"] = recon["Total Revenue"] * 1000.0 / recon["Total Volume"]
-    recon["Running Delta (K bags)"] = (recon["CECAFE Bags (K)"] - recon["Bags (K)"]).cumsum()
+    recon["Delta (K bags)"] = recon["CECAFE Bags (K)"] - recon["Bags (K)"]
+    recon["Running Delta (K bags)"] = recon["Delta (K bags)"].cumsum()
 
     cols_recon = st.columns([1, 1])
     with cols_recon[0]:
@@ -665,6 +666,12 @@ with tab_comexstat:
     st.plotly_chart(
         long_run_line(recon["Date"], recon["Running Delta (K bags)"],
                       "Running Delta — CECAFE minus Comexstat (K bags, cumulative)", height=PANEL_H),
+        use_container_width=True,
+    )
+    st.plotly_chart(
+        signed_bar(recon["Date"], recon["Delta (K bags)"],
+                   "Monthly Delta — CECAFE minus Comexstat (K bags)", height=PANEL_H,
+                   yaxis_title="K bags"),
         use_container_width=True,
     )
     st.plotly_chart(

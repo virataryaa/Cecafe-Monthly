@@ -385,6 +385,18 @@ def compare_series(df_wide, series_cols, title, height=None, cumulative=False):
     return fig
 
 
+def signed_bar(x, y, title, height=None, yaxis_title=None):
+    """Bar chart with each bar colored by its own sign — positive one
+    color, negative another — for a monthly delta/surprise series."""
+    colors = [GOOD if v >= 0 else CRITICAL for v in y]
+    fig = go.Figure(go.Bar(x=x, y=y, marker=dict(color=colors)))
+    layout = _layout(title, height)
+    if yaxis_title:
+        layout["yaxis"]["title"] = yaxis_title
+    fig.update_layout(showlegend=False, **layout)
+    return fig
+
+
 def multi_line(x_vals, series, title, height=None, yaxis_title=None, y_pct=False):
     """Overlays one line per named series on a shared x-axis and y-axis
     (same units) — e.g. two independent sources' readings of the same
