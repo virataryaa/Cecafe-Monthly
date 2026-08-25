@@ -136,11 +136,11 @@ def hhi_trend(df, field):
     return years, hhi.tolist()
 
 
-def geo_value_totals(df, field, crop_year):
-    """Total FOB value ($M) per entity for one crop year, descending —
-    who brings in the most export revenue, not just the most volume."""
+def geo_value_totals(df, field, crop_year, top_n=10):
+    """Total FOB value ($M) per entity for one crop year, descending, capped
+    to the top_n — who brings in the most export revenue, not just volume."""
     sub = df[df["CropYear"] == crop_year]
-    totals = sub.groupby(field)["VL_FOB"].sum().sort_values(ascending=False) / 1e6
+    totals = sub.groupby(field)["VL_FOB"].sum().sort_values(ascending=False).head(top_n) / 1e6
     return [(k, v) for k, v in totals.items() if v > 0]
 
 

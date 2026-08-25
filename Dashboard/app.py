@@ -97,7 +97,7 @@ updated_str = datetime.fromtimestamp(os.path.getmtime(DATA_PATH)).strftime("%d %
 arabica_latest = _latest_period_label("Arabica")
 robusta_latest = _latest_period_label("Robusta")
 st.markdown(
-    f'<div class="cecafe-header"><h1>CECAFE — Brazil Green Coffee Exports</h1>'
+    f'<div class="cecafe-header"><h1>Brazil Monitor</h1>'
     f'<p>Data last updated {updated_str} &nbsp;&middot;&nbsp; '
     f'Arabica through {arabica_latest} &nbsp;&middot;&nbsp; '
     f'Robusta through {robusta_latest}</p></div>',
