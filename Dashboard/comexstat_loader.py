@@ -97,15 +97,16 @@ def geo_price_totals(df, field, crop_year, top_n=10):
     return list(zip(grouped.index, grouped["price"]))
 
 
-def state_port_matrix_range(df, year_start, year_end, top_states=8, top_ports=8):
-    """State x Port matrix of Bags (K) for a calendar-year range, restricted
-    to each side's biggest players — which states route through which ports."""
+def geo_matrix_range(df, row_field, col_field, year_start, year_end, top_rows=8, top_cols=8):
+    """row_field x col_field matrix of Bags (K) for a calendar-year range,
+    restricted to each side's biggest players — e.g. which states route
+    through which ports, or which states supply which destinations."""
     sub = df[(df["Year"] >= year_start) & (df["Year"] <= year_end)]
-    s_order = [s for s, _ in geo_totals(sub, "State")][:top_states]
-    p_order = [p for p, _ in geo_totals(sub, "Port")][:top_ports]
-    sub = sub[sub["State"].isin(s_order) & sub["Port"].isin(p_order)]
-    matrix = sub.pivot_table(index="State", columns="Port", values="Bags (K)", aggfunc="sum")
-    return matrix.reindex(index=s_order, columns=p_order)
+    r_order = [r for r, _ in geo_totals(sub, row_field)][:top_rows]
+    c_order = [c for c, _ in geo_totals(sub, col_field)][:top_cols]
+    sub = sub[sub[row_field].isin(r_order) & sub[col_field].isin(c_order)]
+    matrix = sub.pivot_table(index=row_field, columns=col_field, values="Bags (K)", aggfunc="sum")
+    return matrix.reindex(index=r_order, columns=c_order)
 
 
 def geo_share_trend(df, field, top_n=5):
@@ -121,17 +122,42 @@ def geo_share_trend(df, field, top_n=5):
     return years, [(e, shares[e].tolist()) for e in top_entities]
 
 
-def destination_hhi_trend(df):
-    """Herfindahl-Hirschman Index of destination concentration per crop
-    year (0-10,000; higher = more concentrated in fewer buyers) — is
-    Brazil's coffee buyer base diversifying or consolidating over time."""
+def hhi_trend(df, field):
+    """Herfindahl-Hirschman Index of concentration per crop year for any
+    field (State/Port/Destination) — 0-10,000; higher = more concentrated
+    in fewer entities. For Destination it's buyer concentration; for
+    State/Port it's how concentrated Brazil's own export geography is."""
     years = crop_year_order(df)
-    pivot = df.pivot_table(index="CropYear", columns="Destination", values="Bags (K)", aggfunc="sum")
+    pivot = df.pivot_table(index="CropYear", columns=field, values="Bags (K)", aggfunc="sum")
     pivot = pivot.reindex(years)
     totals = pivot.sum(axis=1)
     shares = pivot.div(totals, axis=0)
     hhi = (shares ** 2).sum(axis=1) * 10000
     return years, hhi.tolist()
+
+
+def geo_value_totals(df, field, crop_year):
+    """Total FOB value ($M) per entity for one crop year, descending —
+    who brings in the most export revenue, not just the most volume."""
+    sub = df[df["CropYear"] == crop_year]
+    totals = sub.groupby(field)["VL_FOB"].sum().sort_values(ascending=False) / 1e6
+    return [(k, v) for k, v in totals.items() if v > 0]
+
+
+def avg_lane_size_trend(df):
+    """Average Bags (K) per active State-Port-Destination combination
+    ('trade lane') per crop year. Comexstat's public bulk export file is
+    already a monthly aggregate by (NCM code, country, state, transport
+    mode, customs office) — not one row per individual shipment/bill of
+    lading, which Comexstat doesn't publish — so this is the closest
+    available proxy for shipment size, not a literal one. Rising = volume
+    concentrating into fewer, larger lanes; falling = spreading across
+    more, smaller ones."""
+    years = crop_year_order(df)
+    grouped = df.groupby(["CropYear", "State", "Port", "Destination"])["Bags (K)"].sum().reset_index()
+    grouped = grouped[grouped["Bags (K)"] > 0]
+    avg = grouped.groupby("CropYear")["Bags (K)"].mean().reindex(years)
+    return years, avg.tolist()
 
 
 def non_maritime_share_trend(df):

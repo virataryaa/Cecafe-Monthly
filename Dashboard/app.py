@@ -637,6 +637,22 @@ with tab_comexstat:
             else:
                 st.info("No data for this crop year.")
 
+    st.markdown('<div class="section-label">FOB Value ($M) — by Geography</div>', unsafe_allow_html=True)
+    cols_value = st.columns(3)
+    for col, field in zip(cols_value, ["State", "Port", "Destination"]):
+        with col:
+            value_data = cx.geo_value_totals(df_cx, field, cx_crop_year)
+            if value_data:
+                v_labels = [k for k, _ in value_data]
+                v_values = [v for _, v in value_data]
+                st.plotly_chart(
+                    ranking_bar(v_labels, v_values, f"{field} — FOB $M ({cx_crop_year})",
+                                top_n=len(v_labels), height=max(PANEL_H, 30 * len(v_labels) + 80)),
+                    use_container_width=True,
+                )
+            else:
+                st.info("No data for this crop year.")
+
     st.markdown('<div class="section-label">Reconciliation vs CECAFE</div>', unsafe_allow_html=True)
     cx_monthly = cx.monthly_totals(df_cx)
     df_econ_recon = econ.load_economics()
@@ -688,12 +704,26 @@ with tab_comexstat:
         yr_min, yr_max = int(df_cx["Year"].min()), int(df_cx["Year"].max())
         yr_start, yr_end = st.slider("Calendar Year Range", yr_min, yr_max,
                                       (max(yr_min, yr_max - 4), yr_max), key="cx_routing_year_range")
-        matrix = cx.state_port_matrix_range(df_cx, yr_start, yr_end)
+        matrix = cx.geo_matrix_range(df_cx, "State", "Port", yr_start, yr_end)
         if matrix.empty:
             st.info("No data for this range.")
         else:
             st.plotly_chart(
                 destination_heatmap(matrix, f"State × Port — {yr_start}–{yr_end} (K bags)",
+                                     height=max(280, 40 * len(matrix) + 100)),
+                use_container_width=True,
+            )
+
+    with st.expander("State × Destination Routing"):
+        yr_min, yr_max = int(df_cx["Year"].min()), int(df_cx["Year"].max())
+        yr_start, yr_end = st.slider("Calendar Year Range", yr_min, yr_max,
+                                      (max(yr_min, yr_max - 4), yr_max), key="cx_state_dest_year_range")
+        matrix = cx.geo_matrix_range(df_cx, "State", "Destination", yr_start, yr_end, top_cols=10)
+        if matrix.empty:
+            st.info("No data for this range.")
+        else:
+            st.plotly_chart(
+                destination_heatmap(matrix, f"State × Destination — {yr_start}–{yr_end} (K bags)",
                                      height=max(280, 40 * len(matrix) + 100)),
                 use_container_width=True,
             )
@@ -714,18 +744,20 @@ with tab_comexstat:
             use_container_width=True,
         )
 
-    with st.expander("Destination Concentration (HHI) Over Time"):
+    with st.expander("Concentration (HHI) Over Time"):
         st.markdown(
-            '<div class="card-desc">The Herfindahl-Hirschman Index: square each destination\'s % '
-            'share of that crop year\'s exports, then add them up. <b>HHI = &Sigma; (share<sub>i</sub> '
+            '<div class="card-desc">The Herfindahl-Hirschman Index: square each entity\'s % share of '
+            'that crop year\'s exports, then add them up. <b>HHI = &Sigma; (share<sub>i</sub> '
             '&times; 100)&sup2;</b>. Ranges 0&ndash;10,000 &mdash; higher means exports are '
-            'concentrated in fewer buyers, lower means they\'re spread across many. A single buyer '
-            'taking 100% would score 10,000; 10 equal buyers would score 1,000.</div>',
+            'concentrated in fewer states/ports/buyers, lower means they\'re spread across many. A '
+            'single entity taking 100% would score 10,000; 10 equal entities would score 1,000.</div>',
             unsafe_allow_html=True,
         )
-        years_h, hhi_vals = cx.destination_hhi_trend(df_cx)
+        hhi_field = st.radio("Group by", ["State", "Port", "Destination"], horizontal=True,
+                              key="cx_hhi_field")
+        years_h, hhi_vals = cx.hhi_trend(df_cx, hhi_field)
         st.plotly_chart(
-            multi_line(years_h, [("HHI", hhi_vals)], "Destination HHI — Higher = More Concentrated",
+            multi_line(years_h, [("HHI", hhi_vals)], f"{hhi_field} HHI — Higher = More Concentrated",
                        height=PANEL_H, yaxis_title="HHI (0-10,000)"),
             use_container_width=True,
         )
@@ -739,6 +771,23 @@ with tab_comexstat:
         years_v, via_share = cx.non_maritime_share_trend(df_cx)
         st.plotly_chart(
             share_line(years_v, via_share, "Share of Exports Not Shipped by Sea", height=PANEL_H),
+            use_container_width=True,
+        )
+
+    with st.expander("Average Volume per Trade-Lane Over Time"):
+        st.markdown(
+            '<div class="card-desc">Comexstat\'s public file is already a monthly total per '
+            'state-port-destination combination, not one row per shipment — Comexstat doesn\'t '
+            'publish that level of detail. So this is the closest available proxy for shipment size: '
+            'total volume &divide; number of distinct state-port-destination combinations active that '
+            'crop year. Rising means volume is concentrating into fewer, bigger routes; falling means '
+            'it\'s spreading across more, smaller ones.</div>',
+            unsafe_allow_html=True,
+        )
+        years_l, lane_vals = cx.avg_lane_size_trend(df_cx)
+        st.plotly_chart(
+            multi_line(years_l, [("Avg K bags / lane", lane_vals)], "Average Volume per Trade-Lane",
+                       height=PANEL_H, yaxis_title="K bags"),
             use_container_width=True,
         )
 
