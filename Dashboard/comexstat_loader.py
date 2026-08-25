@@ -11,16 +11,6 @@ URF_PATH = COMEXSTAT_DIR / "ref_urf.csv"
 
 KG_PER_BAG = 60.0
 
-# Brazilian coffee-growing states with an overwhelmingly dominant single
-# variety (per typical Conab/CECAFE production splits) — used to build an
-# independent, customs-data-only Arabica/Robusta proxy. States without a
-# clear single-variety majority (e.g. Bahia, which mixes Cerrado Arabica
-# and southern Conilon) are left unclassified rather than guessed at.
-STATE_GROUP = {
-    "MG": "Arabica", "SP": "Arabica", "PR": "Arabica", "GO": "Arabica",
-    "ES": "Robusta", "RO": "Robusta",
-}
-
 
 @st.cache_data
 def load_comexstat():
@@ -36,7 +26,6 @@ def load_comexstat():
     df["Period"] = df["Month"].map(MONTH_NAMES)
     df["Date"] = pd.to_datetime(dict(year=df["Year"], month=df["Month"], day=1))
     df["Bags (K)"] = df["KG_LIQUIDO"] / KG_PER_BAG / 1000.0
-    df["StateGroup"] = df["State"].map(STATE_GROUP).fillna("Unclassified")
 
     urf = pd.read_csv(URF_PATH, sep=";", encoding="latin1")
     urf["Port"] = urf["NO_URF"].str.split(" - ", n=1).str[-1].str.title()
@@ -50,49 +39,41 @@ def crop_year_order(df):
             .sort_values("CropStart")["CropYear"].tolist())
 
 
-def state_totals(df, crop_year):
-    """Total Bags (K) per state for one crop year, descending."""
-    sub = df[df["CropYear"] == crop_year]
-    totals = sub.groupby("State")["Bags (K)"].sum().sort_values(ascending=False)
-    return [(s, v) for s, v in totals.items() if v > 0]
+def geo_totals(df, field, crop_year=None):
+    """Total Bags (K) per State or Port, descending. field is 'State' or
+    'Port'; crop_year=None sums the full history."""
+    sub = df if crop_year is None else df[df["CropYear"] == crop_year]
+    totals = sub.groupby(field)["Bags (K)"].sum().sort_values(ascending=False)
+    return [(k, v) for k, v in totals.items() if v > 0]
 
 
-def state_monthly_series(df, states, crop_years=None):
-    """Date-indexed monthly Bags (K) per state, for stacked/overlay charts."""
-    sub = df[df["State"].isin(states)]
+def geo_monthly_series(df, field, entities, crop_years=None):
+    """Date-indexed monthly Bags (K), one column per entity — feeds
+    stacked/overlay trend charts for a chosen set of states or ports."""
+    sub = df[df[field].isin(entities)]
     if crop_years is not None:
         sub = sub[sub["CropYear"].isin(crop_years)]
-    pivot = sub.pivot_table(index="Date", columns="State", values="Bags (K)", aggfunc="sum")
-    pivot = pivot.reindex(columns=states).fillna(0.0).sort_index()
+    pivot = sub.pivot_table(index="Date", columns=field, values="Bags (K)", aggfunc="sum")
+    pivot = pivot.reindex(columns=entities).fillna(0.0).sort_index()
     return pivot
 
 
-def state_proxy_robusta_share(df):
-    """Crop-year Robusta share using only the unambiguous single-variety
-    states (STATE_GROUP) — an independent cross-check against CECAFE's own
-    officially-tagged Arabica/Robusta split, built purely from customs data
-    with no reliance on how CECAFE itself classifies each shipment."""
-    classified = df[df["StateGroup"] != "Unclassified"]
-    pivot = classified.pivot_table(index="CropYear", columns="StateGroup",
-                                    values="Bags (K)", aggfunc="sum")
+def geo_long_run(df, field, entity):
+    """Full chronological monthly Bags (K) history for one State or Port —
+    feeds the drill-down time series chart."""
+    sub = df[df[field] == entity]
+    grouped = sub.groupby("Date", as_index=False)["Bags (K)"].sum().sort_values("Date")
+    return grouped
+
+
+def geo_wide(df, field, entity):
+    """Period rows x CropYear columns of Bags (K) for one State or Port —
+    same shape seasonal_table_html expects elsewhere in this app."""
+    sub = df[df[field] == entity]
+    pivot = sub.pivot_table(index="Period", columns="CropYear", values="Bags (K)", aggfunc="sum")
+    pivot = pivot.reindex(PERIOD_ORDER)
     years = crop_year_order(df)
-    pivot = pivot.reindex(years).fillna(0.0)
-    total = pivot.get("Arabica", 0) + pivot.get("Robusta", 0)
-    share = (pivot.get("Robusta", 0) / total * 100).where(total > 0)
-    return [(y, v) for y, v in share.items() if pd.notna(v)]
-
-
-def port_totals(df, crop_year=None, top_n=10):
-    """Total Bags (K) per port (customs office), descending."""
-    sub = df if crop_year is None else df[df["CropYear"] == crop_year]
-    totals = sub.groupby("Port")["Bags (K)"].sum().sort_values(ascending=False)
-    return [(p, v) for p, v in totals.items() if v > 0]
-
-
-def port_monthly_series(df, ports):
-    sub = df[df["Port"].isin(ports)]
-    pivot = sub.pivot_table(index="Date", columns="Port", values="Bags (K)", aggfunc="sum")
-    pivot = pivot.reindex(columns=ports).fillna(0.0).sort_index()
+    pivot = pivot.reindex(columns=years).reset_index()
     return pivot
 
 

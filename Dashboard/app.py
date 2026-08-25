@@ -566,13 +566,14 @@ with tab_comexstat:
         unsafe_allow_html=True,
     )
     cx_crop_year = st.selectbox("Crop Year", cx_years, index=len(cx_years) - 1, key="cx_crop_year")
+    recent_years = cx_years[-4:]
 
     cols_state = st.columns([1, 1])
     with cols_state[0]:
-        totals = cx.state_totals(df_cx, cx_crop_year)
-        if totals:
-            labels = [s for s, _ in totals]
-            values = [v for _, v in totals]
+        state_totals = cx.geo_totals(df_cx, "State", crop_year=cx_crop_year)
+        if state_totals:
+            labels = [s for s, _ in state_totals]
+            values = [v for _, v in state_totals]
             st.plotly_chart(
                 ranking_bar(labels, values, f"Exports by State — {cx_crop_year} (K bags)",
                             top_n=len(labels), height=max(PANEL_H, 30 * len(labels) + 80)),
@@ -581,9 +582,8 @@ with tab_comexstat:
         else:
             st.info("No data for this crop year.")
     with cols_state[1]:
-        top_states = [s for s, _ in cx.state_totals(df_cx, cx_crop_year)[:5]]
-        recent_years = cx_years[-4:]
-        state_series = cx.state_monthly_series(df_cx, top_states, crop_years=recent_years)
+        top_states = [s for s, _ in state_totals[:5]]
+        state_series = cx.geo_monthly_series(df_cx, "State", top_states, crop_years=recent_years)
         st.plotly_chart(
             stacked_bars(state_series.index, [(s, state_series[s]) for s in top_states],
                          f"Monthly Exports by State — Top 5 ({recent_years[0]}–{recent_years[-1]})",
@@ -591,56 +591,64 @@ with tab_comexstat:
             use_container_width=True,
         )
 
-    st.markdown('<div class="section-label">State-Proxy Arabica / Robusta Cross-Check</div>',
-                unsafe_allow_html=True)
-    st.markdown(
-        '<div class="card-desc">Robusta share computed two independent ways: CECAFE\'s own '
-        'shipment-level type tag (used in the Insights tab), vs. a customs-only proxy built from '
-        'just the unambiguous single-variety states (MG/SP/PR/GO &rarr; Arabica, ES/RO &rarr; '
-        'Robusta; Bahia and other mixed states excluded rather than guessed at). Where the two '
-        'lines track, it validates CECAFE\'s tagging; where they diverge, that\'s worth flagging.</div>',
-        unsafe_allow_html=True,
-    )
-    proxy_share = dict(cx.state_proxy_robusta_share(df_cx))
-    official_share = dict(robusta_share_series(df, TOTAL))
-    shared_years = [y for y in cx_years if y in proxy_share and y in official_share]
-    if shared_years:
-        st.plotly_chart(
-            multi_line(shared_years,
-                       [("CECAFE (official tag)", [official_share[y] for y in shared_years]),
-                        ("Comexstat (state proxy)", [proxy_share[y] for y in shared_years])],
-                       "Robusta Share of Total Exports — Official vs State-Proxy", height=PANEL_H,
-                       y_pct=True),
-            use_container_width=True,
-        )
-    else:
-        st.info("No overlapping crop years between the two sources.")
-
     st.markdown('<div class="section-label">Port / Customs Office</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="card-desc">Which customs post the coffee physically cleared through — a '
         'logistics view with no equivalent in the CECAFE-sourced tabs.</div>',
         unsafe_allow_html=True,
     )
-    port_totals = cx.port_totals(df_cx, crop_year=cx_crop_year, top_n=10)
-    if port_totals:
-        p_labels = [p for p, _ in port_totals]
-        p_values = [v for _, v in port_totals]
+    cols_port = st.columns([1, 1])
+    with cols_port[0]:
+        port_totals = cx.geo_totals(df_cx, "Port", crop_year=cx_crop_year)
+        if port_totals:
+            p_labels = [p for p, _ in port_totals]
+            p_values = [v for _, v in port_totals]
+            st.plotly_chart(
+                ranking_bar(p_labels, p_values, f"Exports by Port — {cx_crop_year} (K bags)",
+                            top_n=10, height=max(PANEL_H, 30 * min(len(p_labels), 11) + 80)),
+                use_container_width=True,
+            )
+        else:
+            st.info("No data for this crop year.")
+    with cols_port[1]:
+        top_ports = [p for p, _ in port_totals[:5]]
+        port_series = cx.geo_monthly_series(df_cx, "Port", top_ports, crop_years=recent_years)
         st.plotly_chart(
-            ranking_bar(p_labels, p_values, f"Exports by Port — {cx_crop_year} (K bags)",
-                        top_n=10, height=max(PANEL_H, 30 * min(len(p_labels), 11) + 80)),
+            stacked_bars(port_series.index, [(p, port_series[p]) for p in top_ports],
+                         f"Monthly Exports by Port — Top 5 ({recent_years[0]}–{recent_years[-1]})",
+                         height=PANEL_H, yaxis_title="K bags", colors=list(SERIES.values())),
             use_container_width=True,
         )
-    else:
-        st.info("No data for this crop year.")
+
+    st.markdown('<div class="section-label">Time Series &amp; Seasonal Detail</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Drill into one state or one port: full monthly history, plus the '
+        'Jul&ndash;Jun seasonal table used throughout this app.</div>',
+        unsafe_allow_html=True,
+    )
+    geo_field = st.radio("Group by", ["State", "Port"], horizontal=True, key="cx_geo_field")
+    geo_options = [k for k, _ in cx.geo_totals(df_cx, geo_field)]
+    geo_entity = st.selectbox(geo_field, geo_options, key=f"cx_geo_entity_{geo_field}")
+
+    geo_series = cx.geo_long_run(df_cx, geo_field, geo_entity)
+    st.plotly_chart(
+        long_run_line(geo_series["Date"], geo_series["Bags (K)"],
+                      f"{geo_entity} — Exports, Full History (K bags)", height=PANEL_H),
+        use_container_width=True,
+    )
+    geo_table = cx.geo_wide(df_cx, geo_field, geo_entity)
+    st.markdown(
+        seasonal_table_html(geo_table, cx_years, title=f"{geo_entity} Exports", unit="K bags", kind="flow"),
+        unsafe_allow_html=True,
+    )
 
     st.markdown('<div class="section-label">Reconciliation vs CECAFE</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="card-desc">Comexstat is customs-clearance data; CECAFE is association-reported '
         'shipment data — different methodologies measuring the same underlying trade. Volume in K '
         'bags, price as FOB value &divide; volume ($/bag, both types combined since Comexstat carries '
-        'no variety tag). Consistent lines validate both sources; a persistent gap points to a '
-        'timing or definitional difference worth digging into.</div>',
+        'no variety tag). Consistent lines/tight scatter validate both sources; a persistent gap '
+        'points to a timing or definitional difference worth digging into.</div>',
         unsafe_allow_html=True,
     )
     cx_monthly = cx.monthly_totals(df_cx)
@@ -661,10 +669,16 @@ with tab_comexstat:
         )
     with cols_recon[1]:
         st.plotly_chart(
-            multi_line(recon["Date"],
-                       [("Comexstat", recon["Price ($/bag)"]), ("CECAFE", recon["CECAFE Price ($/bag)"])],
-                       "Monthly Realized Price — Comexstat vs CECAFE", height=PANEL_H,
-                       yaxis_title="$/bag"),
+            scatter_with_trend(recon["Bags (K)"], recon["CECAFE Bags (K)"],
+                                "Comexstat (K bags)", "CECAFE (K bags)",
+                                "Monthly Export Volume — Comexstat vs CECAFE", height=PANEL_H),
             use_container_width=True,
         )
+    st.plotly_chart(
+        multi_line(recon["Date"],
+                   [("Comexstat", recon["Price ($/bag)"]), ("CECAFE", recon["CECAFE Price ($/bag)"])],
+                   "Monthly Realized Price — Comexstat vs CECAFE", height=PANEL_H,
+                   yaxis_title="$/bag"),
+        use_container_width=True,
+    )
 
