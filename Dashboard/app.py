@@ -1,6 +1,3 @@
-import os
-from datetime import datetime
-
 import pandas as pd
 import streamlit as st
 
@@ -9,7 +6,7 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
                           destination_mix, destination_month_matrix, long_run_series,
                           robusta_share_series, monthly_type_mix, ytd_period_window,
                           month_options, month_label, crop_years_overlapping_months,
-                          DATA_PATH, TOTAL, ALL_TYPES, EUROPE_LABEL)
+                          TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
@@ -82,27 +79,7 @@ def type_label(t):
     return "Arabica + Robusta" if t == ALL_TYPES else t
 
 
-def _latest_period_label(type_):
-    df_wide = flow_wide(df, type_, TOTAL)
-    year_cols = year_columns(df_wide)
-    current_year = year_cols[-1]
-    s = df_wide[current_year]
-    idx = s.last_valid_index()
-    if idx is None:
-        return current_year
-    return f"{df_wide.loc[idx, 'Period']} {current_year}"
-
-
-updated_str = datetime.fromtimestamp(os.path.getmtime(DATA_PATH)).strftime("%d %b %Y, %H:%M")
-arabica_latest = _latest_period_label("Arabica")
-robusta_latest = _latest_period_label("Robusta")
-st.markdown(
-    f'<div class="cecafe-header"><h1>Brazil Monitor</h1>'
-    f'<p>Data last updated {updated_str} &nbsp;&middot;&nbsp; '
-    f'Arabica through {arabica_latest} &nbsp;&middot;&nbsp; '
-    f'Robusta through {robusta_latest}</p></div>',
-    unsafe_allow_html=True,
-)
+st.markdown('<div class="cecafe-header"><h1>Brazil Monitor</h1></div>', unsafe_allow_html=True)
 st.write("")
 
 tab_detail, tab_insights, tab_price_impact, tab_economics, tab_comexstat = st.tabs(
@@ -554,6 +531,19 @@ with tab_comexstat:
     geo_options = ["Total"] + [k for k, _ in cx.geo_totals(df_cx, geo_field)]
     geo_entity = st.selectbox(geo_field, geo_options, key=f"cx_geo_entity_{geo_field}")
 
+    geo_table = cx.geo_wide(df_cx, geo_field, geo_entity)
+    cols_geo = st.columns([1, 1])
+    with cols_geo[0]:
+        st.plotly_chart(monthly_comparison(geo_table, cx_years, title="Monthly Exports", height=PANEL_H),
+                         use_container_width=True)
+        st.plotly_chart(min_max_avg(geo_table, cx_years, height=PANEL_H), use_container_width=True)
+    with cols_geo[1]:
+        st.plotly_chart(
+            cumulative_forecast(geo_table, cx_years, title="Cumulative Exports (crop year)",
+                                 height=2 * PANEL_H + 40),
+            use_container_width=True,
+        )
+
     geo_series = cx.geo_long_run(df_cx, geo_field, geo_entity)
     window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
                        format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
@@ -564,7 +554,6 @@ with tab_comexstat:
                           window=window),
         use_container_width=True,
     )
-    geo_table = cx.geo_wide(df_cx, geo_field, geo_entity)
     st.markdown(
         seasonal_table_html(geo_table, cx_years, title=f"{geo_entity} Exports", unit="K bags", kind="flow"),
         unsafe_allow_html=True,
