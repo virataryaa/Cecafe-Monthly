@@ -106,7 +106,7 @@ st.markdown(
 st.write("")
 
 tab_detail, tab_insights, tab_price_impact, tab_economics, tab_comexstat = st.tabs(
-    ["Detail", "Insights", "Price vs Exports", "Brazil Economics", "Origin & Logistics"])
+    ["Detail", "Insights", "Price vs Exports", "Brazil Economics", "Comexstat"])
 
 PANEL_H = 330
 
