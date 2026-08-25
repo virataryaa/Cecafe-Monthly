@@ -1,0 +1,282 @@
+CO_PAIS;NO_PAIS;NO_PAIS_ING
+0;Não Definido;Not defined
+13;Afeganistão;Afghanistan
+15;Aland, Ilhas;Aland Islands
+17;Albânia;Albania
+20;Alboran-Perejil, Ilhas;Alboran-Perejil, Islands
+23;Alemanha;Germany
+25;Alemanha Oriental;East Germany
+31;Burkina Faso;Burkina Faso
+37;Andorra;Andorra
+40;Angola;Angola
+41;Anguilla;Anguilla
+42;Antártica;Antarctica
+43;Antígua e Barbuda;Antigua and Barbuda
+47;Antilhas Holandesas;Netherlands Antilles
+53;Arábia Saudita;Saudi Arabia
+59;Argélia;Algeria
+63;Argentina;Argentina
+64;Armênia;Armenia
+65;Aruba;Aruba
+69;Austrália;Australia
+72;Áustria;Austria
+73;Azerbaijão;Azerbaijan
+77;Bahamas;Bahamas
+80;Barein;Bahrein
+81;Bangladesh;Bangladesh
+83;Barbados;Barbados
+85;Belarus;Belarus
+87;Bélgica;Belgium
+88;Belize;Belize
+90;Bermudas;Bermuda
+93;Mianmar;Myanmar
+97;Bolívia;Bolivia
+98;Bósnia-Herzegovina;Bosnia and Herzegovina
+99;Bonaire, Saint Eustatius e Saba;Bonaire, Saint Eustatius and Saba
+100;Internação na Zona Franca de Manaus;Internment in the Manaus Free Trade Zone
+101;Botsuana;Botswana
+102;Bouvet, Ilha;Bouvet Island
+105;Brasil;Brazil
+108;Brunei;Brunei
+111;Bulgária;Bulgaria
+115;Burundi;Burundi
+119;Butão;Bhutan
+127;Cabo Verde;Cape Verde
+137;Cayman, Ilhas;Cayman Islands
+141;Camboja;Cambodia
+145;Camarões;Cameroon
+149;Canadá;Canada
+150;Canal, Ilhas do (Guernsey);Guernsey
+151;Canárias, Ilhas;Canary, Islands
+152;Canal, Ilhas do (Jersey);Jersey
+153;Cazaquistão;Kazakhstan
+154;Catar;Qatar
+158;Chile;Chile
+160;China;China
+161;Taiwan (Formosa);Taiwan
+163;Chipre;Cyprus
+165;Cocos (Keeling), Ilhas;Cocos (Keeling) Islands
+169;Colômbia;Colombia
+173;Comores;Comoros
+177;Congo;Congo
+183;Cook, Ilhas;Cook Islands
+187;Coreia do Norte;North Korea
+190;Coreia do Sul;South Korea
+193;Costa do Marfim;Cote D'Ivore
+195;Croácia;Croatia
+196;Costa Rica;Costa Rica
+198;Coveite (Kuweit);Kuwait
+199;Cuba;Cuba
+200;Curaçao;Curaçao
+229;Benin;Benin
+232;Dinamarca;Denmark
+235;Dominica;Dominica Island
+237;Dubai;Dubai
+239;Equador;Ecuador
+240;Egito;Egypt
+243;Eritreia;Eritrea
+244;Emirados Árabes Unidos;United Arab Emirates
+245;Espanha;Spain
+246;Eslovênia;Slovenia
+247;Eslováquia;Slovakia
+249;Estados Unidos;United States
+251;Estônia;Estonia
+253;Etiópia;Ethiopia
+255;Falkland (Malvinas);Falkland Islands (Malvinas)
+259;Faroe, Ilhas;Faroe Islands
+267;Filipinas;Philippines
+271;Finlândia;Finland
+275;França;France
+281;Gabão;Gabon
+285;Gâmbia;Gambia
+289;Gana;Ghana
+291;Geórgia;Georgia
+292;Geórgia do Sul e Sandwich do Sul, Ilhas;South Georgia and the South Sandwich Islands
+293;Gibraltar;Gibraltar
+297;Granada;Grenada
+301;Grécia;Greece
+305;Groenlândia;Greenland
+309;Guadalupe;Guadeloupe
+313;Guam;Guam
+317;Guatemala;Guatemala
+321;Guernsey;Guernsey
+325;Guiana Francesa;French Guyana
+329;Guiné;Guinea
+331;Guiné Equatorial;Equatorial Guinea
+334;Guiné-Bissau;Guinea-Bissau
+337;Guiana;Guyana
+341;Haiti;Haiti
+343;Heard e ilhas mcdonald, Ilha;Heard Island and McDonald Islands
+345;Honduras;Honduras
+351;Hong Kong;Hong Kong
+355;Hungria;Hungary
+357;Iêmen;Yemen
+358;Iêmen Democrático;Democratic Yemen
+359;Ilha de Man;Isle of Man
+361;Índia;India
+365;Indonésia;Indonesia
+367;Inglaterra;England
+369;Iraque;Iraq
+372;Irã;Iran
+375;Irlanda;Ireland
+379;Islândia;Iceland
+383;Israel;Israel
+386;Itália;Italy
+388;Iugoslávia;Yugoslavia
+391;Jamaica;Jamaica
+393;Jersey;Jersey
+396;Johnston, Ilhas;Johnston (Island)
+399;Japão;Japan
+403;Jordânia;Jordan
+411;Kiribati;Kiribati
+420;Laos;Laos
+423;Lebuan, Ilhas;Lebuan
+426;Lesoto;Lesotho
+427;Letônia;Latvia
+431;Líbano;Lebanon
+434;Libéria;Liberia
+438;Líbia;Libya
+440;Liechtenstein;Liechtenstein
+442;Lituânia;Lithuania
+445;Luxemburgo;Luxembourg
+447;Macau;Macao
+449;Macedônia;Macedonia
+450;Madagascar;Madagascar
+452;Madeira, Ilha da;Madeira
+455;Malásia;Malaysia
+458;Malavi;Malawi
+461;Maldivas;Maldives
+464;Mali;Mali
+467;Malta;Malta
+472;Marianas do Norte, Ilhas;Northern Marianas
+474;Marrocos;Morocco
+476;Marshall, Ilhas;Marshall Islands
+477;Martinica;Martinique
+485;Maurício;Mauritius
+488;Mauritânia;Mauritania
+489;Mayotte;Mayotte
+490;Midway, Ilhas;Midway, Islands
+493;México;Mexico
+494;Moldávia;Moldova
+495;Mônaco;Monaco
+497;Mongólia;Mongolia
+498;Montenegro;Montenegro
+499;Micronésia;Micronesia
+501;Montserrat;Montserrat
+505;Moçambique;Mozambique
+507;Namíbia;Namibia
+508;Nauru;Nauru
+511;Christmas (Navidad), Ilha;Christmas Island
+517;Nepal;Nepal
+521;Nicarágua;Nicaragua
+525;Níger;Niger
+528;Nigéria;Nigeria
+531;Niue;Niue
+535;Norfolk, Ilha;Norfolk Island
+538;Noruega;Norway
+542;Nova Caledônia;New Caledonia
+545;Papua Nova Guiné;Papua New Guinea
+548;Nova Zelândia;New Zealand
+551;Vanuatu;Vanuatu
+556;Omã;Oman
+563;Pacífico, Ilhas do (Administração dos EUA);Pacific, Islands of (U.S. Administration)
+566;Pacífico, Ilhas do (EUA);Pacific Islands (USA)
+569;Pacífico, Ilhas do (Território Fideicomisso EUA);Pacifics, Islands of (U.S. trust territory)
+573;Países Baixos (Holanda);Netherlands
+575;Palau;Palau
+576;Paquistão;Pakistan
+578;Palestina;Palestine
+580;Panamá;Panama
+583;Papua, Território de;Papua territory
+586;Paraguai;Paraguay
+589;Peru;Peru
+593;Pitcairn;Pitcairn
+599;Polinésia Francesa;French Polynesia
+603;Polônia;Poland
+607;Portugal;Portugal
+611;Porto Rico;Puerto Rico
+623;Quênia;Kenya
+625;Quirguistão;Kyrgyzstan
+628;Reino Unido;United Kingdom
+640;República Centro-Africana;Central African Republic
+647;República Dominicana;Dominican Republic
+660;Reunião;Reunion
+665;Zimbábue;Zimbabwe
+670;Romênia;Romania
+675;Ruanda;Rwanda
+676;Rússia;Russia
+677;Salomão, Ilhas;Solomon Islands
+678;Saint Kitts e Nevis;St. Kitts and Nevis
+685;Saara Ocidental;Western Sahara
+687;El Salvador;El Salvador
+690;Samoa;Samoa
+691;Samoa Americana;Americana Samoa
+693;São Bartolomeu;Saint Barthelemy
+695;São Cristóvão e Névis;Saint Christopher and Nevis
+697;San Marino;San Marino
+698;São Martinho, Ilha de (parte francesa);São Martinho, Ilha de (parte francesa)
+699;Sint Maarten;Sint Maarten
+700;São Pedro e Miquelon;Saint Pierre and Miquelon
+705;São Vicente e Granadinas;Saint Vicent and the Granadines
+710;Santa Helena;Saint Helena
+715;Santa Lúcia;Saint Lucia
+720;São Tomé e Príncipe;São Tome and Principe
+728;Senegal;Senegal
+731;Seicheles;Seychelles
+735;Serra Leoa;Sierra Leone
+737;Sérvia;Serbia
+741;Singapura;Singapore
+744;Síria;Syria
+748;Somália;Somalia
+750;Sri Lanka;Sri Lanka
+754;Suazilândia;Swaziland
+755;Svalbard e Jan Mayen;Svalbard and Jan Mayen
+756;África do Sul;South Africa
+759;Sudão;Sudan
+760;Sudão do Sul;South Sudan
+764;Suécia;Sweden
+767;Suíça;Switzerland
+770;Suriname;Suriname
+772;Tadjiquistão;Tajikistan
+776;Tailândia;Thailand
+780;Tanzânia;Tanzania
+781;Terras Austrais Francesas;French Southern Lands
+782;Território Britânico do Oceano Índico;British Indian Ocean Territory
+783;Djibuti;Djibouti
+785;Território da Alta Comissão do Pacífico Ocidental;Territory of the High Commissioner of the Western Pacif
+786;Território Antártico Britânico;British Antarctic Territory
+788;Chade;Chad
+790;Tchecoslováquia;Czechoslovakia
+791;Tcheca, República;Czech Republic
+795;Timor Leste;East Timor
+800;Togo;Togo
+805;Toquelau;Tokelau
+810;Tonga;Tonga
+815;Trinidad e Tobago;Trinidad and Tobago
+820;Tunísia;Tunisia
+823;Turcas e Caicos, Ilhas;Turks and Caicos, Islands
+824;Turcomenistão;Turkmenistan
+827;Turquia;Turkey
+828;Tuvalu;Tuvalu
+831;Ucrânia;Ukraine
+833;Uganda;Uganda
+840;União das Repúblicas Socialistas Soviéticas;Union of Soviet Socialist Republics
+845;Uruguai;Uruguay
+847;Uzbequistão;Uzbekistan
+848;Vaticano;Vatican City
+850;Venezuela;Venezuela
+858;Vietnã;Vietnam
+863;Virgens, Ilhas (Britânicas);Virgin Islands (UK)
+866;Virgens, Ilhas (Americanas);Virgin Islands (USA)
+870;Fiji;Fiji
+873;Wake, Ilha;Wake Island
+875;Wallis e Futuna, Ilhas;Wallis and Futuna
+888;Congo, República Democrática;Democratic Republic of the Congo
+890;Zâmbia;Zambia
+895;Zona do Canal do Panamá;Panama Canal Zone
+990;Provisão de Navios e Aeronaves;Planes and ships provisions
+994;A Designar;To define
+995;Bancos Centrais;Central Banks
+997;Organizações Internacionais;International Organizations
+998;Sem informação;Sem informação
+999;Não Declarados;Not declared

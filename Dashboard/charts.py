@@ -385,6 +385,27 @@ def compare_series(df_wide, series_cols, title, height=None, cumulative=False):
     return fig
 
 
+def multi_line(x_vals, series, title, height=None, yaxis_title=None, y_pct=False):
+    """Overlays one line per named series on a shared x-axis and y-axis
+    (same units) — e.g. two independent sources' readings of the same
+    metric, plotted together for a direct visual cross-check."""
+    palette_cycle = list(SERIES.values())
+    fig = go.Figure()
+    for i, (name, vals) in enumerate(series):
+        fig.add_trace(go.Scatter(
+            x=x_vals, y=vals, mode="lines+markers", name=name, connectgaps=True,
+            line=dict(width=2.5, color=palette_cycle[i % len(palette_cycle)]),
+            marker=dict(size=5),
+        ))
+    layout = _layout(title, height)
+    if yaxis_title:
+        layout["yaxis"]["title"] = yaxis_title
+    if y_pct:
+        layout["yaxis"]["ticksuffix"] = "%"
+    fig.update_layout(showlegend=True, **layout)
+    return fig
+
+
 def pie_breakdown(labels, values, title, height=None):
     palette_cycle = list(SERIES.values())
     colors = [palette_cycle[i % len(palette_cycle)] for i in range(len(labels))]

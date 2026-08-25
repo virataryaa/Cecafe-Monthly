@@ -14,10 +14,11 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, stacked_bars, SERIES)
+                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 import economics_loader as econ
+import comexstat_loader as cx
 
 st.set_page_config(page_title="Cecafe: Brazil Coffee Exports", layout="wide")
 
@@ -104,8 +105,8 @@ st.markdown(
 )
 st.write("")
 
-tab_detail, tab_insights, tab_price_impact, tab_economics = st.tabs(
-    ["Detail", "Insights", "Price vs Exports", "Brazil Economics"])
+tab_detail, tab_insights, tab_price_impact, tab_economics, tab_comexstat = st.tabs(
+    ["Detail", "Insights", "Price vs Exports", "Brazil Economics", "Origin & Logistics"])
 
 PANEL_H = 330
 
@@ -543,4 +544,127 @@ with tab_economics:
             )
         except Exception as e:
             st.warning(f"Couldn't load the {diff_type} differential table: {e}")
+
+with tab_comexstat:
+    st.markdown(
+        '<div class="card-desc">Brazilian customs (Comexstat) green-coffee export data — an '
+        'independent source from CECAFE\'s own association reporting used everywhere else in this '
+        'app, with two things CECAFE\'s data doesn\'t have: which <b>Brazilian state</b> each shipment '
+        'left from, and which <b>port/customs office</b> it cleared through. Covers all green coffee '
+        '(HS/NCM 0901.11 &amp; 0901.12) without an Arabica/Robusta tag of its own — 1997–present.</div>',
+        unsafe_allow_html=True,
+    )
+
+    df_cx = cx.load_comexstat()
+    cx_years = cx.crop_year_order(df_cx)
+
+    st.markdown('<div class="section-label">State of Origin</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Minas Gerais and S&atilde;o Paulo are Arabica heartland; '
+        'Esp&iacute;rito Santo and Rond&ocirc;nia are almost pure Conilon/Robusta &mdash; so this '
+        'geography is itself a rough variety signal, independent of any type tag.</div>',
+        unsafe_allow_html=True,
+    )
+    cx_crop_year = st.selectbox("Crop Year", cx_years, index=len(cx_years) - 1, key="cx_crop_year")
+
+    cols_state = st.columns([1, 1])
+    with cols_state[0]:
+        totals = cx.state_totals(df_cx, cx_crop_year)
+        if totals:
+            labels = [s for s, _ in totals]
+            values = [v for _, v in totals]
+            st.plotly_chart(
+                ranking_bar(labels, values, f"Exports by State — {cx_crop_year} (K bags)",
+                            top_n=len(labels), height=max(PANEL_H, 30 * len(labels) + 80)),
+                use_container_width=True,
+            )
+        else:
+            st.info("No data for this crop year.")
+    with cols_state[1]:
+        top_states = [s for s, _ in cx.state_totals(df_cx, cx_crop_year)[:5]]
+        recent_years = cx_years[-4:]
+        state_series = cx.state_monthly_series(df_cx, top_states, crop_years=recent_years)
+        st.plotly_chart(
+            stacked_bars(state_series.index, [(s, state_series[s]) for s in top_states],
+                         f"Monthly Exports by State — Top 5 ({recent_years[0]}–{recent_years[-1]})",
+                         height=PANEL_H, yaxis_title="K bags", colors=list(SERIES.values())),
+            use_container_width=True,
+        )
+
+    st.markdown('<div class="section-label">State-Proxy Arabica / Robusta Cross-Check</div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Robusta share computed two independent ways: CECAFE\'s own '
+        'shipment-level type tag (used in the Insights tab), vs. a customs-only proxy built from '
+        'just the unambiguous single-variety states (MG/SP/PR/GO &rarr; Arabica, ES/RO &rarr; '
+        'Robusta; Bahia and other mixed states excluded rather than guessed at). Where the two '
+        'lines track, it validates CECAFE\'s tagging; where they diverge, that\'s worth flagging.</div>',
+        unsafe_allow_html=True,
+    )
+    proxy_share = dict(cx.state_proxy_robusta_share(df_cx))
+    official_share = dict(robusta_share_series(df, TOTAL))
+    shared_years = [y for y in cx_years if y in proxy_share and y in official_share]
+    if shared_years:
+        st.plotly_chart(
+            multi_line(shared_years,
+                       [("CECAFE (official tag)", [official_share[y] for y in shared_years]),
+                        ("Comexstat (state proxy)", [proxy_share[y] for y in shared_years])],
+                       "Robusta Share of Total Exports — Official vs State-Proxy", height=PANEL_H,
+                       y_pct=True),
+            use_container_width=True,
+        )
+    else:
+        st.info("No overlapping crop years between the two sources.")
+
+    st.markdown('<div class="section-label">Port / Customs Office</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Which customs post the coffee physically cleared through — a '
+        'logistics view with no equivalent in the CECAFE-sourced tabs.</div>',
+        unsafe_allow_html=True,
+    )
+    port_totals = cx.port_totals(df_cx, crop_year=cx_crop_year, top_n=10)
+    if port_totals:
+        p_labels = [p for p, _ in port_totals]
+        p_values = [v for _, v in port_totals]
+        st.plotly_chart(
+            ranking_bar(p_labels, p_values, f"Exports by Port — {cx_crop_year} (K bags)",
+                        top_n=10, height=max(PANEL_H, 30 * min(len(p_labels), 11) + 80)),
+            use_container_width=True,
+        )
+    else:
+        st.info("No data for this crop year.")
+
+    st.markdown('<div class="section-label">Reconciliation vs CECAFE</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">Comexstat is customs-clearance data; CECAFE is association-reported '
+        'shipment data — different methodologies measuring the same underlying trade. Volume in K '
+        'bags, price as FOB value &divide; volume ($/bag, both types combined since Comexstat carries '
+        'no variety tag). Consistent lines validate both sources; a persistent gap points to a '
+        'timing or definitional difference worth digging into.</div>',
+        unsafe_allow_html=True,
+    )
+    cx_monthly = cx.monthly_totals(df_cx)
+    df_econ_recon = econ.load_economics()
+    recon = cx_monthly.merge(
+        df_econ_recon[["Date", "Total Volume", "Total Revenue"]], on="Date", how="inner")
+    recon["CECAFE Bags (K)"] = recon["Total Volume"] / 1000.0
+    recon["CECAFE Price ($/bag)"] = recon["Total Revenue"] * 1000.0 / recon["Total Volume"]
+
+    cols_recon = st.columns([1, 1])
+    with cols_recon[0]:
+        st.plotly_chart(
+            multi_line(recon["Date"],
+                       [("Comexstat", recon["Bags (K)"]), ("CECAFE", recon["CECAFE Bags (K)"])],
+                       "Monthly Export Volume — Comexstat vs CECAFE", height=PANEL_H,
+                       yaxis_title="K bags"),
+            use_container_width=True,
+        )
+    with cols_recon[1]:
+        st.plotly_chart(
+            multi_line(recon["Date"],
+                       [("Comexstat", recon["Price ($/bag)"]), ("CECAFE", recon["CECAFE Price ($/bag)"])],
+                       "Monthly Realized Price — Comexstat vs CECAFE", height=PANEL_H,
+                       yaxis_title="$/bag"),
+            use_container_width=True,
+        )
 
