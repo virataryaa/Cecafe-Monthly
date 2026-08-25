@@ -144,22 +144,6 @@ def geo_value_totals(df, field, crop_year, top_n=10):
     return [(k, v) for k, v in totals.items() if v > 0]
 
 
-def avg_lane_size_trend(df):
-    """Average Bags (K) per active State-Port-Destination combination
-    ('trade lane') per crop year. Comexstat's public bulk export file is
-    already a monthly aggregate by (NCM code, country, state, transport
-    mode, customs office) — not one row per individual shipment/bill of
-    lading, which Comexstat doesn't publish — so this is the closest
-    available proxy for shipment size, not a literal one. Rising = volume
-    concentrating into fewer, larger lanes; falling = spreading across
-    more, smaller ones."""
-    years = crop_year_order(df)
-    grouped = df.groupby(["CropYear", "State", "Port", "Destination"])["Bags (K)"].sum().reset_index()
-    grouped = grouped[grouped["Bags (K)"] > 0]
-    avg = grouped.groupby("CropYear")["Bags (K)"].mean().reindex(years)
-    return years, avg.tolist()
-
-
 def non_maritime_share_trend(df):
     """% of exports NOT shipped by sea, per crop year — mostly road
     (Mercosur land-border trade); a rising trend would flag more overland

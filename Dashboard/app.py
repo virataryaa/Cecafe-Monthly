@@ -774,20 +774,3 @@ with tab_comexstat:
             use_container_width=True,
         )
 
-    with st.expander("Average Volume per Trade-Lane Over Time"):
-        st.markdown(
-            '<div class="card-desc">Comexstat\'s public file is already a monthly total per '
-            'state-port-destination combination, not one row per shipment — Comexstat doesn\'t '
-            'publish that level of detail. So this is the closest available proxy for shipment size: '
-            'total volume &divide; number of distinct state-port-destination combinations active that '
-            'crop year. Rising means volume is concentrating into fewer, bigger routes; falling means '
-            'it\'s spreading across more, smaller ones.</div>',
-            unsafe_allow_html=True,
-        )
-        years_l, lane_vals = cx.avg_lane_size_trend(df_cx)
-        st.plotly_chart(
-            multi_line(years_l, [("Avg K bags / lane", lane_vals)], "Average Volume per Trade-Lane",
-                       height=PANEL_H, yaxis_title="K bags"),
-            use_container_width=True,
-        )
-
