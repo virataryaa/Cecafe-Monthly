@@ -97,10 +97,10 @@ def geo_price_totals(df, field, crop_year, top_n=10):
     return list(zip(grouped.index, grouped["price"]))
 
 
-def state_port_matrix(df, crop_year, top_states=8, top_ports=8):
-    """State x Port matrix of Bags (K) for one crop year, restricted to
-    each side's biggest players — which states route through which ports."""
-    sub = df[df["CropYear"] == crop_year]
+def state_port_matrix_range(df, year_start, year_end, top_states=8, top_ports=8):
+    """State x Port matrix of Bags (K) for a calendar-year range, restricted
+    to each side's biggest players — which states route through which ports."""
+    sub = df[(df["Year"] >= year_start) & (df["Year"] <= year_end)]
     s_order = [s for s, _ in geo_totals(sub, "State")][:top_states]
     p_order = [p for p, _ in geo_totals(sub, "Port")][:top_ports]
     sub = sub[sub["State"].isin(s_order) & sub["Port"].isin(p_order)]

@@ -686,12 +686,15 @@ with tab_comexstat:
     st.markdown('<div class="section-label">Further Analysis (Comexstat Only)</div>', unsafe_allow_html=True)
 
     with st.expander("State × Port Routing"):
-        matrix = cx.state_port_matrix(df_cx, cx_crop_year)
+        yr_min, yr_max = int(df_cx["Year"].min()), int(df_cx["Year"].max())
+        yr_start, yr_end = st.slider("Calendar Year Range", yr_min, yr_max,
+                                      (max(yr_min, yr_max - 4), yr_max), key="cx_routing_year_range")
+        matrix = cx.state_port_matrix_range(df_cx, yr_start, yr_end)
         if matrix.empty:
-            st.info("No data for this crop year.")
+            st.info("No data for this range.")
         else:
             st.plotly_chart(
-                destination_heatmap(matrix, f"State × Port — {cx_crop_year} (K bags)",
+                destination_heatmap(matrix, f"State × Port — {yr_start}–{yr_end} (K bags)",
                                      height=max(280, 40 * len(matrix) + 100)),
                 use_container_width=True,
             )
