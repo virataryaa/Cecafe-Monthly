@@ -85,7 +85,9 @@ st.markdown('<div class="cecafe-header"><h1>Brazil Monitor</h1></div>', unsafe_a
 st.write("")
 
 tab_detail, tab_insights, tab_price_impact, tab_economics, tab_comexstat, tab_sources = st.tabs(
-    ["Detail", "Insights", "Price vs Exports", "Brazil Economics", "Comexstat", "Sources Comparison"])
+    ["Detail (Cecafe)", "Insights (Cecafe)", "Price vs Exports (Cecafe, Luis)",
+     "Brazil Economics (Cecafe, Luis)", "Comexstat (Comexstat, Cecafe)",
+     "Sources Comparison (Cecafe, Comexstat, TDM, ICO)"])
 
 PANEL_H = 330
 
@@ -761,7 +763,7 @@ with tab_sources:
         )
         active_sources = ["CECAFE", "Comexstat", "TDM"]
     else:
-        active_sources = ["CECAFE+Soluble", "Comexstat+Soluble", "TDM+Soluble", "ICO"]
+        active_sources = ["Cecafe (Incl Soluble)", "Comexstat (Incl Soluble)", "TDM (Incl Soluble)", "ICO"]
 
     merged_active = merged[["Date"] + active_sources]
 

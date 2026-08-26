@@ -155,9 +155,9 @@ def merged_sources(df_cx):
         "Comexstat": comexstat_brazil(df_cx),
         "TDM": load_tdm_brazil(),
         "ICO": ico_brazil(),
-        "CECAFE+Soluble": cecafe_brazil_total(),
-        "Comexstat+Soluble": comexstat_brazil_total(df_cx),
-        "TDM+Soluble": tdm_brazil_total(),
+        "Cecafe (Incl Soluble)": cecafe_brazil_total(),
+        "Comexstat (Incl Soluble)": comexstat_brazil_total(df_cx),
+        "TDM (Incl Soluble)": tdm_brazil_total(),
     }
     out = None
     for name, f in frames.items():
