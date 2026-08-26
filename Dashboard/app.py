@@ -767,9 +767,28 @@ with tab_sources:
     st.markdown('<div class="section-label">Pairwise Correlation</div>', unsafe_allow_html=True)
     corr = sl.correlation_matrix(merged)
     st.plotly_chart(
-        destination_heatmap(corr, "Correlation Between Sources (monthly Bags K)", height=380),
+        destination_heatmap(corr, "Correlation Between Sources (monthly Bags K)", height=380, fmt=".3f"),
         use_container_width=True,
     )
+
+    st.markdown('<div class="section-label">Delta vs CECAFE</div>', unsafe_allow_html=True)
+    delta_cols = [("Comexstat", "Comexstat − CECAFE"), ("TDM", "TDM − CECAFE"), ("ICO", "ICO − CECAFE")]
+    for source, label in delta_cols:
+        merged[label] = merged[source] - merged["CECAFE"]
+
+    cols_delta = st.columns([1, 1])
+    with cols_delta[0]:
+        st.plotly_chart(
+            multi_line(merged["Date"], [(label, merged[label].cumsum()) for _, label in delta_cols],
+                       "Running Delta vs CECAFE (K bags, cumulative)", height=PANEL_H, yaxis_title="K bags"),
+            use_container_width=True,
+        )
+    with cols_delta[1]:
+        st.plotly_chart(
+            multi_line(merged["Date"], [(label, merged[label]) for _, label in delta_cols],
+                       "Monthly Delta vs CECAFE (K bags)", height=PANEL_H, yaxis_title="K bags"),
+            use_container_width=True,
+        )
 
     st.markdown('<div class="section-label">New Sources vs Established</div>', unsafe_allow_html=True)
     pairs = [("TDM", "CECAFE"), ("TDM", "Comexstat"), ("ICO", "CECAFE"), ("ICO", "Comexstat")]

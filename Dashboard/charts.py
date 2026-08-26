@@ -456,13 +456,15 @@ def ranking_bar(labels, values, title, height=None, top_n=8):
     return fig
 
 
-def destination_heatmap(matrix_df, title, height=None):
-    """matrix_df: index = destination, columns = Period (Jul..Jun)."""
+def destination_heatmap(matrix_df, title, height=None, fmt=",.0f"):
+    """matrix_df: index = destination, columns = Period (Jul..Jun). fmt
+    controls the cell-label number format — e.g. ".2f" for a correlation
+    matrix instead of the default thousands-separated integer count."""
     z = matrix_df.values
     fig = go.Figure(go.Heatmap(
         z=z, x=matrix_df.columns.tolist(), y=matrix_df.index.tolist(),
         colorscale=[[0, "#eafaf0"], [1, "#0a6e42"]],
-        text=[[f"{v:,.0f}" if pd.notna(v) else "" for v in row] for row in z],
+        text=[[f"{v:{fmt}}" if pd.notna(v) else "" for v in row] for row in z],
         texttemplate="%{text}", textfont=dict(size=10, color=INK),
         colorbar=dict(title=""),
     ))
