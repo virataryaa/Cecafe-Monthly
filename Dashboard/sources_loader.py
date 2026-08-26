@@ -166,11 +166,17 @@ def merged_sources(df_cx):
     return out.sort_index().reset_index()
 
 
-def correlation_matrix(merged):
-    """Pairwise correlation, with the self-correlation diagonal blanked out
-    (always 1 by definition, not informative)."""
-    cols = [c for c in merged.columns if c != "Date"]
-    corr = merged[cols].corr()
+def correlation_matrix(merged_active):
+    """Pairwise correlation restricted to the common window where every
+    active source has data — pandas' default .corr() does pairwise
+    deletion, which would let each cell use a different, inconsistent
+    date range (e.g. CECAFE vs Comexstat over 1997-2026 next to anything
+    vs ICO over just 2016-present). Diagonal blanked out (always 1, not
+    informative). Returns (corr, first_date, last_date, n_months) so the
+    caller can label the chart with the actual window used."""
+    cols = [c for c in merged_active.columns if c != "Date"]
+    common = merged_active.dropna(subset=cols)
+    corr = common[cols].corr()
     for c in cols:
         corr.loc[c, c] = np.nan
-    return corr
+    return corr, common["Date"].min(), common["Date"].max(), len(common)

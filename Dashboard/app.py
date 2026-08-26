@@ -751,32 +751,17 @@ with tab_sources:
     merged = sl.merged_sources(cx.load_comexstat())
 
     scope = st.radio("Product scope", ["Green Bean Only", "Total Coffee (incl. Soluble)"],
-                      horizontal=True, key="sources_scope")
+                      horizontal=True, index=1, key="sources_scope")
 
     if scope == "Green Bean Only":
         st.markdown(
-            '<div class="card-desc">CECAFE, Comexstat, and TDM here are all green-bean-only by '
-            'construction — directly apples-to-apples. ICO isn\'t offered in this scope since its '
-            'headline figure can\'t be split into green vs. soluble.</div>',
+            '<div class="card-desc">ICO isn\'t shown here — its export figure blends in '
+            'soluble/instant coffee and can\'t be split back out to green-bean-only.</div>',
             unsafe_allow_html=True,
         )
         active_sources = ["CECAFE", "Comexstat", "TDM"]
     else:
-        st.markdown(
-            '<div class="card-desc">Confirmed: ICO\'s headline Brazil export figure includes '
-            'soluble/instant coffee (as GBE) that green-bean-only CECAFE/Comexstat/TDM don\'t. '
-            'Pulled each source\'s own soluble exports (CECAFE\'s own Soluble column; TDM\'s '
-            '\'Instant &amp; Mixes\' tag; Comexstat\'s NCM 2101.11/.12) and added them to green '
-            'bean, using the standard 2.6x soluble-to-green-bean-equivalent factor for TDM/Comexstat '
-            '(TDM\'s own GBE column already applies exactly this). All three now land within a few '
-            'percent of ICO — not just CECAFE.</div>',
-            unsafe_allow_html=True,
-        )
-        include_ico = st.radio("Include ICO?", ["Yes", "No"], horizontal=True,
-                                key="sources_include_ico") == "Yes"
-        active_sources = ["CECAFE+Soluble", "Comexstat+Soluble", "TDM+Soluble"]
-        if include_ico:
-            active_sources.append("ICO")
+        active_sources = ["CECAFE+Soluble", "Comexstat+Soluble", "TDM+Soluble", "ICO"]
 
     baseline = active_sources[0]
     merged_active = merged[["Date"] + active_sources]
@@ -789,9 +774,10 @@ with tab_sources:
     )
 
     st.markdown('<div class="section-label">Pairwise Correlation</div>', unsafe_allow_html=True)
-    corr = sl.correlation_matrix(merged_active)
+    corr, corr_start, corr_end, corr_n = sl.correlation_matrix(merged_active)
     st.plotly_chart(
-        destination_heatmap(corr, "Correlation Between Sources (monthly Bags K)", height=380, fmt=".3f"),
+        destination_heatmap(corr, f"Correlation Between Sources ({corr_start:%b %Y}–{corr_end:%b %Y}, "
+                                   f"n={corr_n})", height=380, fmt=".3f"),
         use_container_width=True,
     )
 
