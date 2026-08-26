@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -15,11 +16,25 @@ ICO_PATH = SOURCES_DIR / "ico_exports.parquet"
 def load_tdm_brazil():
     """Brazil green-bean exports from TDM's bilateral trade-flow data,
     summed across all partner countries. TDM's GBE (green bean equivalent)
-    is in metric tons — converted to K 60kg bags via GBE * 1000 / 60 / 1000."""
+    is in metric tons — converted to K 60kg bags via GBE * 1000 / 60 / 1000.
+
+    TDM occasionally has a single-partner reporting anomaly (e.g.
+    Brazil->Germany, Jan 2015, where Germany alone was 52% of that month's
+    total vs the normal ~20-25% for a top buyer) that isn't a real trade
+    spike. That month runs 1.59x its centered 5-month median — clearly
+    separated from the next-highest ratio anywhere in the series (1.29x,
+    a real broad-based peak). Cap anything above 1.5x to that median,
+    rather than let one bad cell distort the whole series."""
     df = pd.read_parquet(TDM_PATH)
     df["Date"] = pd.to_datetime(dict(year=df.Year, month=df.Month, day=1))
+    df = df.sort_values("Date").reset_index(drop=True)
     df["Bags (K)"] = df["GBE"] / 60.0
-    return df[["Date", "Bags (K)"]].sort_values("Date").reset_index(drop=True)
+
+    rolling_med = df["Bags (K)"].rolling(5, center=True, min_periods=3).median()
+    is_outlier = df["Bags (K)"] > rolling_med * 1.5
+    df.loc[is_outlier, "Bags (K)"] = rolling_med[is_outlier]
+
+    return df[["Date", "Bags (K)"]]
 
 
 @st.cache_data
@@ -71,5 +86,10 @@ def merged_sources(df_cx):
 
 
 def correlation_matrix(merged):
+    """Pairwise correlation, with the self-correlation diagonal blanked out
+    (always 1 by definition, not informative)."""
     cols = [c for c in merged.columns if c != "Date"]
-    return merged[cols].corr()
+    corr = merged[cols].corr()
+    for c in cols:
+        corr.loc[c, c] = np.nan
+    return corr
