@@ -397,6 +397,23 @@ def signed_bar(x, y, title, height=None, yaxis_title=None):
     return fig
 
 
+def multi_bar(x_vals, series, title, height=None, yaxis_title=None):
+    """Grouped bar version of multi_line — one bar series per named
+    series, sharing an x-axis. For delta/comparison series where bars
+    read more clearly than several overlapping lines."""
+    palette_cycle = list(SERIES.values())
+    fig = go.Figure()
+    for i, (name, vals) in enumerate(series):
+        fig.add_trace(go.Bar(x=x_vals, y=vals, name=name,
+                              marker=dict(color=palette_cycle[i % len(palette_cycle)])))
+    layout = _layout(title, height)
+    layout["barmode"] = "group"
+    if yaxis_title:
+        layout["yaxis"]["title"] = yaxis_title
+    fig.update_layout(showlegend=True, **layout)
+    return fig
+
+
 def multi_line(x_vals, series, title, height=None, yaxis_title=None, y_pct=False):
     """Overlays one line per named series on a shared x-axis and y-axis
     (same units) — e.g. two independent sources' readings of the same

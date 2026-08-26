@@ -11,7 +11,8 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
-                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, signed_bar, SERIES)
+                     price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, multi_bar,
+                     signed_bar, SERIES)
 from table_html import seasonal_table_html, summary_table_html, overview_table_html
 import luis_loader as pi
 import economics_loader as econ
@@ -749,30 +750,37 @@ with tab_comexstat:
 with tab_sources:
     merged = sl.merged_sources(cx.load_comexstat())
 
-    st.markdown('<div class="section-label">Monthly Export Volume — All Sources</div>', unsafe_allow_html=True)
+    include_ico = st.radio("Include ICO in this analysis?", ["Yes", "No"], horizontal=True,
+                            key="sources_include_ico") == "Yes"
     st.markdown(
-        '<div class="card-desc">CECAFE (1990–present), Comexstat (1997–present), TDM '
-        '(2015–present), ICO (2016–present) — four independently measured views of the '
-        'same physical trade, each with a different start date.</div>',
+        '<div class="card-desc">ICO\'s export figures don\'t break out green bean vs. '
+        'soluble/instant coffee, while CECAFE, Comexstat, and TDM here are green-bean only — '
+        'if ICO\'s headline number includes a soluble component, that alone could explain its '
+        'persistent ~9&ndash;14% premium over the other three (unconfirmed from the data '
+        'available). Toggle it off for a strictly apples-to-apples green-bean comparison.</div>',
         unsafe_allow_html=True,
     )
+    active_sources = ["CECAFE", "Comexstat", "TDM"] + (["ICO"] if include_ico else [])
+    merged_active = merged[["Date"] + active_sources]
+
+    st.markdown('<div class="section-label">Monthly Export Volume — All Sources</div>', unsafe_allow_html=True)
     st.plotly_chart(
-        multi_line(merged["Date"],
-                   [("CECAFE", merged["CECAFE"]), ("Comexstat", merged["Comexstat"]),
-                    ("TDM", merged["TDM"]), ("ICO", merged["ICO"])],
+        multi_line(merged_active["Date"], [(s, merged_active[s]) for s in active_sources],
                    "Brazil Green Coffee Exports by Source", height=PANEL_H + 60, yaxis_title="K bags"),
         use_container_width=True,
     )
 
     st.markdown('<div class="section-label">Pairwise Correlation</div>', unsafe_allow_html=True)
-    corr = sl.correlation_matrix(merged)
+    corr = sl.correlation_matrix(merged_active)
     st.plotly_chart(
         destination_heatmap(corr, "Correlation Between Sources (monthly Bags K)", height=380, fmt=".3f"),
         use_container_width=True,
     )
 
     st.markdown('<div class="section-label">Delta vs CECAFE</div>', unsafe_allow_html=True)
-    delta_cols = [("Comexstat", "Comexstat − CECAFE"), ("TDM", "TDM − CECAFE"), ("ICO", "ICO − CECAFE")]
+    delta_cols = [("Comexstat", "Comexstat − CECAFE"), ("TDM", "TDM − CECAFE")]
+    if include_ico:
+        delta_cols.append(("ICO", "ICO − CECAFE"))
     for source, label in delta_cols:
         merged[label] = merged[source] - merged["CECAFE"]
 
@@ -785,13 +793,15 @@ with tab_sources:
         )
     with cols_delta[1]:
         st.plotly_chart(
-            multi_line(merged["Date"], [(label, merged[label]) for _, label in delta_cols],
-                       "Monthly Delta vs CECAFE (K bags)", height=PANEL_H, yaxis_title="K bags"),
+            multi_bar(merged["Date"], [(label, merged[label]) for _, label in delta_cols],
+                      "Monthly Delta vs CECAFE (K bags)", height=PANEL_H, yaxis_title="K bags"),
             use_container_width=True,
         )
 
     st.markdown('<div class="section-label">New Sources vs Established</div>', unsafe_allow_html=True)
-    pairs = [("TDM", "CECAFE"), ("TDM", "Comexstat"), ("ICO", "CECAFE"), ("ICO", "Comexstat")]
+    pairs = [("TDM", "CECAFE"), ("TDM", "Comexstat")]
+    if include_ico:
+        pairs += [("ICO", "CECAFE"), ("ICO", "Comexstat")]
     for row_start in range(0, len(pairs), 2):
         cols_pair = st.columns([1, 1])
         for col, (x_name, y_name) in zip(cols_pair, pairs[row_start:row_start + 2]):
