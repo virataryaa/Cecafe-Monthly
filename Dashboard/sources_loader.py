@@ -9,7 +9,18 @@ import economics_loader as econ
 
 SOURCES_DIR = Path(__file__).resolve().parent.parent / "Database" / "Sources"
 TDM_PATH = SOURCES_DIR / "tdm_brazil.parquet"
+TDM_SOLUBLE_PATH = SOURCES_DIR / "tdm_brazil_soluble.parquet"
+COMEXSTAT_SOLUBLE_PATH = SOURCES_DIR / "comexstat_brazil_soluble.parquet"
 ICO_PATH = SOURCES_DIR / "ico_exports.parquet"
+
+# ICO's GBE (Green Bean Equivalent) convention for soluble/instant coffee:
+# 1 kg soluble product ~= 2.6 kg green bean equivalent (a real physical
+# conversion for the concentration during processing, unlike the green-bean
+# 1.05x factor above which has no such physical basis). TDM's own GBE
+# column for soluble already applies exactly this factor (confirmed
+# constant across every row) — Comexstat has no GBE field at all, so it's
+# applied manually below.
+SOLUBLE_GBE_FACTOR = 2.6
 
 
 @st.cache_data
@@ -44,6 +55,50 @@ def load_tdm_brazil():
 
 
 @st.cache_data
+def load_tdm_brazil_soluble():
+    """Brazil soluble/instant coffee exports from TDM (COMMODITY_TAG =
+    'Instant & Mixes', HS 2101.11/2101.12), in K 60kg green-bean-equivalent
+    bags. Uses TDM's GBE column here (not raw QTY1 like the green-bean
+    series) since GBE = QTY1 * 2.6 for every soluble row — that's the real
+    soluble-to-green conversion, not an unexplained padding."""
+    df = pd.read_parquet(TDM_SOLUBLE_PATH)
+    df["Date"] = pd.to_datetime(dict(year=df.Year, month=df.Month, day=1))
+    df["Bags (K)"] = df["GBE"] / 60.0
+    return df[["Date", "Bags (K)"]].sort_values("Date").reset_index(drop=True)
+
+
+def tdm_brazil_total():
+    """TDM green bean + soluble (GBE-converted), K bags — comparable in
+    scope to ICO's blended headline figure."""
+    green = load_tdm_brazil().rename(columns={"Bags (K)": "Green"})
+    soluble = load_tdm_brazil_soluble().rename(columns={"Bags (K)": "Soluble"})
+    out = green.merge(soluble, on="Date", how="outer").fillna(0.0)
+    out["Bags (K)"] = out["Green"] + out["Soluble"]
+    return out[["Date", "Bags (K)"]].sort_values("Date").reset_index(drop=True)
+
+
+@st.cache_data
+def load_comexstat_brazil_soluble():
+    """Brazil soluble coffee exports from Comexstat (NCM 2101.11.10/.90,
+    2101.12.00), extracted the same way as the green-bean pull. KG_LIQUIDO
+    is raw product weight (Comexstat has no GBE field), converted to K
+    bags via the same SOLUBLE_GBE_FACTOR TDM's own GBE column uses."""
+    df = pd.read_parquet(COMEXSTAT_SOLUBLE_PATH)
+    df["Date"] = pd.to_datetime(dict(year=df.Year, month=df.Month, day=1))
+    df["Bags (K)"] = (df["KG_LIQUIDO"] * SOLUBLE_GBE_FACTOR) / 60.0 / 1000.0
+    return df[["Date", "Bags (K)"]].sort_values("Date").reset_index(drop=True)
+
+
+def comexstat_brazil_total(df_cx):
+    """Comexstat green bean + soluble (GBE-converted), K bags."""
+    green = comexstat_brazil(df_cx).rename(columns={"Bags (K)": "Green"})
+    soluble = load_comexstat_brazil_soluble().rename(columns={"Bags (K)": "Soluble"})
+    out = green.merge(soluble, on="Date", how="outer").fillna(0.0)
+    out["Bags (K)"] = out["Green"] + out["Soluble"]
+    return out[["Date", "Bags (K)"]].sort_values("Date").reset_index(drop=True)
+
+
+@st.cache_data
 def load_ico_exports():
     """ICO Monthly Trade Statistics, every country/grouping ICO reports —
     GBE already in 60kg bags (ICO's own unit), 2016-present. Extracted from
@@ -70,7 +125,7 @@ def cecafe_brazil():
     return out[["Date", "Bags (K)"]]
 
 
-def cecafe_brazil_incl_soluble():
+def cecafe_brazil_total():
     """CECAFE's Total Volume plus Soluble, K bags — the ICO-comparable
     baseline. Confirmed empirically: ICO's headline Brazil export figure
     runs ~11.6% above green-bean CECAFE on average, every year, but only
@@ -90,16 +145,19 @@ def comexstat_brazil(df_cx):
 
 
 def merged_sources(df_cx):
-    """Outer-joined monthly Bags (K) for all sources, aligned on Date.
-    Includes CECAFE+Soluble as an extra column alongside the 4 main
-    sources — not meant for the general overlay, just the ICO-specific
-    comparisons where a green-bean-only baseline isn't apples-to-apples."""
+    """Outer-joined monthly Bags (K) for every source and scope, aligned
+    on Date. Green-bean scope (CECAFE, Comexstat, TDM) is directly
+    comparable across those three; the +Soluble ("total coffee, GBE")
+    columns are the ones comparable to ICO, whose headline figure already
+    blends green and soluble."""
     frames = {
         "CECAFE": cecafe_brazil(),
         "Comexstat": comexstat_brazil(df_cx),
         "TDM": load_tdm_brazil(),
         "ICO": ico_brazil(),
-        "CECAFE+Soluble": cecafe_brazil_incl_soluble(),
+        "CECAFE+Soluble": cecafe_brazil_total(),
+        "Comexstat+Soluble": comexstat_brazil_total(df_cx),
+        "TDM+Soluble": tdm_brazil_total(),
     }
     out = None
     for name, f in frames.items():

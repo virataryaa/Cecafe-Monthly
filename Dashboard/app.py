@@ -750,24 +750,41 @@ with tab_comexstat:
 with tab_sources:
     merged = sl.merged_sources(cx.load_comexstat())
 
-    include_ico = st.radio("Include ICO in this analysis?", ["Yes", "No"], horizontal=True,
-                            key="sources_include_ico") == "Yes"
-    st.markdown(
-        '<div class="card-desc">Confirmed: ICO\'s headline Brazil export figure runs '
-        '~11.6% above green-bean-only CECAFE on average, every year — but only ~0.4% above '
-        'once CECAFE\'s own Soluble volume is added in. ICO\'s number already includes '
-        'soluble/instant coffee (as GBE), which CECAFE, Comexstat, and TDM here do not. The '
-        'delta and scatter panels below compare ICO against <b>CECAFE + Soluble</b>, not plain '
-        'CECAFE, so it\'s apples-to-apples. Toggle ICO off to drop it from every panel.</div>',
-        unsafe_allow_html=True,
-    )
-    active_sources = ["CECAFE", "Comexstat", "TDM"] + (["ICO"] if include_ico else [])
+    scope = st.radio("Product scope", ["Green Bean Only", "Total Coffee (incl. Soluble)"],
+                      horizontal=True, key="sources_scope")
+
+    if scope == "Green Bean Only":
+        st.markdown(
+            '<div class="card-desc">CECAFE, Comexstat, and TDM here are all green-bean-only by '
+            'construction — directly apples-to-apples. ICO isn\'t offered in this scope since its '
+            'headline figure can\'t be split into green vs. soluble.</div>',
+            unsafe_allow_html=True,
+        )
+        active_sources = ["CECAFE", "Comexstat", "TDM"]
+    else:
+        st.markdown(
+            '<div class="card-desc">Confirmed: ICO\'s headline Brazil export figure includes '
+            'soluble/instant coffee (as GBE) that green-bean-only CECAFE/Comexstat/TDM don\'t. '
+            'Pulled each source\'s own soluble exports (CECAFE\'s own Soluble column; TDM\'s '
+            '\'Instant &amp; Mixes\' tag; Comexstat\'s NCM 2101.11/.12) and added them to green '
+            'bean, using the standard 2.6x soluble-to-green-bean-equivalent factor for TDM/Comexstat '
+            '(TDM\'s own GBE column already applies exactly this). All three now land within a few '
+            'percent of ICO — not just CECAFE.</div>',
+            unsafe_allow_html=True,
+        )
+        include_ico = st.radio("Include ICO?", ["Yes", "No"], horizontal=True,
+                                key="sources_include_ico") == "Yes"
+        active_sources = ["CECAFE+Soluble", "Comexstat+Soluble", "TDM+Soluble"]
+        if include_ico:
+            active_sources.append("ICO")
+
+    baseline = active_sources[0]
     merged_active = merged[["Date"] + active_sources]
 
     st.markdown('<div class="section-label">Monthly Export Volume — All Sources</div>', unsafe_allow_html=True)
     st.plotly_chart(
         multi_line(merged_active["Date"], [(s, merged_active[s]) for s in active_sources],
-                   "Brazil Green Coffee Exports by Source", height=PANEL_H + 60, yaxis_title="K bags"),
+                   "Brazil Coffee Exports by Source", height=PANEL_H + 60, yaxis_title="K bags"),
         use_container_width=True,
     )
 
@@ -778,41 +795,35 @@ with tab_sources:
         use_container_width=True,
     )
 
-    st.markdown('<div class="section-label">Delta vs CECAFE</div>', unsafe_allow_html=True)
-    delta_specs = [("Comexstat", "CECAFE", "Comexstat − CECAFE"), ("TDM", "CECAFE", "TDM − CECAFE")]
-    if include_ico:
-        delta_specs.append(("ICO", "CECAFE+Soluble", "ICO − CECAFE (incl. Soluble)"))
-    for source, baseline, label in delta_specs:
-        merged[label] = merged[source] - merged[baseline]
-    delta_cols = [(source, label) for source, _, label in delta_specs]
+    st.markdown(f'<div class="section-label">Delta vs {baseline}</div>', unsafe_allow_html=True)
+    others = active_sources[1:]
+    delta_labels = [f"{name} − {baseline}" for name in others]
+    for name, label in zip(others, delta_labels):
+        merged[label] = merged[name] - merged[baseline]
 
     cols_delta = st.columns([1, 1])
     with cols_delta[0]:
         st.plotly_chart(
-            multi_line(merged["Date"], [(label, merged[label].cumsum()) for _, label in delta_cols],
-                       "Running Delta vs CECAFE (K bags, cumulative)", height=PANEL_H, yaxis_title="K bags"),
+            multi_line(merged["Date"], [(label, merged[label].cumsum()) for label in delta_labels],
+                       f"Running Delta vs {baseline} (K bags, cumulative)", height=PANEL_H,
+                       yaxis_title="K bags"),
             use_container_width=True,
         )
     with cols_delta[1]:
         st.plotly_chart(
-            multi_bar(merged["Date"], [(label, merged[label]) for _, label in delta_cols],
-                      "Monthly Delta vs CECAFE (K bags)", height=PANEL_H, yaxis_title="K bags"),
+            multi_bar(merged["Date"], [(label, merged[label]) for label in delta_labels],
+                      f"Monthly Delta vs {baseline} (K bags)", height=PANEL_H, yaxis_title="K bags"),
             use_container_width=True,
         )
 
-    st.markdown('<div class="section-label">New Sources vs Established</div>', unsafe_allow_html=True)
-    pairs = [("TDM", "CECAFE"), ("TDM", "Comexstat")]
-    if include_ico:
-        # Before/after: raw green-bean CECAFE (still biased) next to
-        # CECAFE+Soluble (the apples-to-apples fix).
-        pairs += [("ICO", "CECAFE"), ("ICO", "CECAFE+Soluble")]
-    for row_start in range(0, len(pairs), 2):
+    st.markdown('<div class="section-label">Each Source vs Baseline</div>', unsafe_allow_html=True)
+    for row_start in range(0, len(others), 2):
         cols_pair = st.columns([1, 1])
-        for col, (x_name, y_name) in zip(cols_pair, pairs[row_start:row_start + 2]):
+        for col, name in zip(cols_pair, others[row_start:row_start + 2]):
             with col:
                 st.plotly_chart(
-                    scatter_with_trend(merged[x_name], merged[y_name], x_name, y_name,
-                                        f"{x_name} vs {y_name}", height=PANEL_H),
+                    scatter_with_trend(merged[baseline], merged[name], baseline, name,
+                                        f"{name} vs {baseline}", height=PANEL_H),
                     use_container_width=True,
                 )
 
