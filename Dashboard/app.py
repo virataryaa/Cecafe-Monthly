@@ -767,9 +767,15 @@ with tab_sources:
     merged_active = merged[["Date"] + active_sources]
 
     st.markdown('<div class="section-label">Monthly Export Volume — All Sources</div>', unsafe_allow_html=True)
+    window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
+                       format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
+                       key="sources_rolling_window", label_visibility="collapsed")
+    rolled = merged_active.set_index("Date")[active_sources].rolling(window, min_periods=window).sum()
+    rolled = rolled.reset_index()
     st.plotly_chart(
-        multi_line(merged_active["Date"], [(s, merged_active[s]) for s in active_sources],
-                   "Brazil Coffee Exports by Source", height=PANEL_H + 60, yaxis_title="K bags"),
+        multi_line(rolled["Date"], [(s, rolled[s]) for s in active_sources],
+                   f"Brazil Coffee Exports by Source — Rolling {window}-Month Total", height=PANEL_H + 60,
+                   yaxis_title="K bags"),
         use_container_width=True,
     )
 
