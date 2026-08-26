@@ -63,10 +63,23 @@ def ico_brazil():
 
 
 def cecafe_brazil():
-    """CECAFE's own Total Volume (Arabica + Robusta), K bags."""
+    """CECAFE's own Total Volume (Arabica + Robusta, green bean only), K bags."""
     econ_df = econ.load_economics()
     out = econ_df[["Date", "Total Volume"]].copy()
     out["Bags (K)"] = out["Total Volume"] / 1000.0
+    return out[["Date", "Bags (K)"]]
+
+
+def cecafe_brazil_incl_soluble():
+    """CECAFE's Total Volume plus Soluble, K bags — the ICO-comparable
+    baseline. Confirmed empirically: ICO's headline Brazil export figure
+    runs ~11.6% above green-bean CECAFE on average, every year, but only
+    ~0.4% above once Soluble is added — i.e. ICO's own number already
+    includes soluble/instant coffee (as GBE), which green-bean-only
+    CECAFE/Comexstat/TDM do not."""
+    econ_df = econ.load_economics()
+    out = econ_df[["Date", "Total Volume Incl Soluble"]].copy()
+    out["Bags (K)"] = out["Total Volume Incl Soluble"] / 1000.0
     return out[["Date", "Bags (K)"]]
 
 
@@ -77,12 +90,16 @@ def comexstat_brazil(df_cx):
 
 
 def merged_sources(df_cx):
-    """Outer-joined monthly Bags (K) for all four sources, aligned on Date."""
+    """Outer-joined monthly Bags (K) for all sources, aligned on Date.
+    Includes CECAFE+Soluble as an extra column alongside the 4 main
+    sources — not meant for the general overlay, just the ICO-specific
+    comparisons where a green-bean-only baseline isn't apples-to-apples."""
     frames = {
         "CECAFE": cecafe_brazil(),
         "Comexstat": comexstat_brazil(df_cx),
         "TDM": load_tdm_brazil(),
         "ICO": ico_brazil(),
+        "CECAFE+Soluble": cecafe_brazil_incl_soluble(),
     }
     out = None
     for name, f in frames.items():

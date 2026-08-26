@@ -753,11 +753,12 @@ with tab_sources:
     include_ico = st.radio("Include ICO in this analysis?", ["Yes", "No"], horizontal=True,
                             key="sources_include_ico") == "Yes"
     st.markdown(
-        '<div class="card-desc">ICO\'s export figures don\'t break out green bean vs. '
-        'soluble/instant coffee, while CECAFE, Comexstat, and TDM here are green-bean only — '
-        'if ICO\'s headline number includes a soluble component, that alone could explain its '
-        'persistent ~9&ndash;14% premium over the other three (unconfirmed from the data '
-        'available). Toggle it off for a strictly apples-to-apples green-bean comparison.</div>',
+        '<div class="card-desc">Confirmed: ICO\'s headline Brazil export figure runs '
+        '~11.6% above green-bean-only CECAFE on average, every year — but only ~0.4% above '
+        'once CECAFE\'s own Soluble volume is added in. ICO\'s number already includes '
+        'soluble/instant coffee (as GBE), which CECAFE, Comexstat, and TDM here do not. The '
+        'delta and scatter panels below compare ICO against <b>CECAFE + Soluble</b>, not plain '
+        'CECAFE, so it\'s apples-to-apples. Toggle ICO off to drop it from every panel.</div>',
         unsafe_allow_html=True,
     )
     active_sources = ["CECAFE", "Comexstat", "TDM"] + (["ICO"] if include_ico else [])
@@ -778,11 +779,12 @@ with tab_sources:
     )
 
     st.markdown('<div class="section-label">Delta vs CECAFE</div>', unsafe_allow_html=True)
-    delta_cols = [("Comexstat", "Comexstat − CECAFE"), ("TDM", "TDM − CECAFE")]
+    delta_specs = [("Comexstat", "CECAFE", "Comexstat − CECAFE"), ("TDM", "CECAFE", "TDM − CECAFE")]
     if include_ico:
-        delta_cols.append(("ICO", "ICO − CECAFE"))
-    for source, label in delta_cols:
-        merged[label] = merged[source] - merged["CECAFE"]
+        delta_specs.append(("ICO", "CECAFE+Soluble", "ICO − CECAFE (incl. Soluble)"))
+    for source, baseline, label in delta_specs:
+        merged[label] = merged[source] - merged[baseline]
+    delta_cols = [(source, label) for source, _, label in delta_specs]
 
     cols_delta = st.columns([1, 1])
     with cols_delta[0]:
@@ -801,7 +803,9 @@ with tab_sources:
     st.markdown('<div class="section-label">New Sources vs Established</div>', unsafe_allow_html=True)
     pairs = [("TDM", "CECAFE"), ("TDM", "Comexstat")]
     if include_ico:
-        pairs += [("ICO", "CECAFE"), ("ICO", "Comexstat")]
+        # Before/after: raw green-bean CECAFE (still biased) next to
+        # CECAFE+Soluble (the apples-to-apples fix).
+        pairs += [("ICO", "CECAFE"), ("ICO", "CECAFE+Soluble")]
     for row_start in range(0, len(pairs), 2):
         cols_pair = st.columns([1, 1])
         for col, (x_name, y_name) in zip(cols_pair, pairs[row_start:row_start + 2]):

@@ -33,6 +33,14 @@ def load_economics():
     df["Total Revenue"] = df[COLS["Arabica"]["revenue"]] + df[COLS["Robusta"]["revenue"]]
     df["Total Volume"] = df[COLS["Arabica"]["volume"]] + df[COLS["Robusta"]["volume"]]
     df["Robusta Revenue SharePct"] = df[COLS["Robusta"]["revenue"]] / df["Total Revenue"] * 100
+
+    # Soluble has volume only (no revenue/price columns yet) — kept separate
+    # from "Total Volume" above, which stays green-bean-only (Arabica +
+    # Robusta) to match Comexstat/TDM's scope. Total Volume Incl Soluble is
+    # for comparisons against sources whose own headline figure includes
+    # soluble/instant coffee (e.g. ICO).
+    df["Soluble Volume"] = df["Soluble Volume (60kg Bags)"]
+    df["Total Volume Incl Soluble"] = df["Total Volume"] + df["Soluble Volume"]
     return df.sort_values("Date").reset_index(drop=True)
 
 
