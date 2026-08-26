@@ -763,7 +763,6 @@ with tab_sources:
     else:
         active_sources = ["CECAFE+Soluble", "Comexstat+Soluble", "TDM+Soluble", "ICO"]
 
-    baseline = active_sources[0]
     merged_active = merged[["Date"] + active_sources]
 
     st.markdown('<div class="section-label">Monthly Export Volume — All Sources</div>', unsafe_allow_html=True)
@@ -787,8 +786,9 @@ with tab_sources:
         use_container_width=True,
     )
 
-    st.markdown(f'<div class="section-label">Delta vs {baseline}</div>', unsafe_allow_html=True)
-    others = active_sources[1:]
+    st.markdown('<div class="section-label">Delta vs Base Source</div>', unsafe_allow_html=True)
+    baseline = st.radio("Base source", active_sources, horizontal=True, key=f"sources_baseline_{scope}")
+    others = [s for s in active_sources if s != baseline]
     delta_labels = [f"{name} − {baseline}" for name in others]
     for name, label in zip(others, delta_labels):
         merged[label] = merged[name] - merged[baseline]
