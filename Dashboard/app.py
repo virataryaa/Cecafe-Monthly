@@ -16,6 +16,7 @@ from table_html import seasonal_table_html, summary_table_html, overview_table_h
 import luis_loader as pi
 import economics_loader as econ
 import comexstat_loader as cx
+import sources_loader as sl
 
 st.set_page_config(page_title="Brazil: Cecafe, Luis & Comexstat", layout="wide")
 
@@ -82,8 +83,8 @@ def type_label(t):
 st.markdown('<div class="cecafe-header"><h1>Brazil Monitor</h1></div>', unsafe_allow_html=True)
 st.write("")
 
-tab_detail, tab_insights, tab_price_impact, tab_economics, tab_comexstat = st.tabs(
-    ["Detail", "Insights", "Price vs Exports", "Brazil Economics", "Comexstat"])
+tab_detail, tab_insights, tab_price_impact, tab_economics, tab_comexstat, tab_sources = st.tabs(
+    ["Detail", "Insights", "Price vs Exports", "Brazil Economics", "Comexstat", "Sources Comparison"])
 
 PANEL_H = 330
 
@@ -744,4 +745,41 @@ with tab_comexstat:
             share_line(years_v, via_share, "Share of Exports Not Shipped by Sea", height=PANEL_H),
             use_container_width=True,
         )
+
+with tab_sources:
+    merged = sl.merged_sources(cx.load_comexstat())
+
+    st.markdown('<div class="section-label">Monthly Export Volume — All Sources</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card-desc">CECAFE (1990–present), Comexstat (1997–present), TDM '
+        '(2015–present), ICO (2016–present) — four independently measured views of the '
+        'same physical trade, each with a different start date.</div>',
+        unsafe_allow_html=True,
+    )
+    st.plotly_chart(
+        multi_line(merged["Date"],
+                   [("CECAFE", merged["CECAFE"]), ("Comexstat", merged["Comexstat"]),
+                    ("TDM", merged["TDM"]), ("ICO", merged["ICO"])],
+                   "Brazil Green Coffee Exports by Source", height=PANEL_H + 60, yaxis_title="K bags"),
+        use_container_width=True,
+    )
+
+    st.markdown('<div class="section-label">Pairwise Correlation</div>', unsafe_allow_html=True)
+    corr = sl.correlation_matrix(merged)
+    st.plotly_chart(
+        destination_heatmap(corr, "Correlation Between Sources (monthly Bags K)", height=380),
+        use_container_width=True,
+    )
+
+    st.markdown('<div class="section-label">New Sources vs Established</div>', unsafe_allow_html=True)
+    pairs = [("TDM", "CECAFE"), ("TDM", "Comexstat"), ("ICO", "CECAFE"), ("ICO", "Comexstat")]
+    for row_start in range(0, len(pairs), 2):
+        cols_pair = st.columns([1, 1])
+        for col, (x_name, y_name) in zip(cols_pair, pairs[row_start:row_start + 2]):
+            with col:
+                st.plotly_chart(
+                    scatter_with_trend(merged[x_name], merged[y_name], x_name, y_name,
+                                        f"{x_name} vs {y_name}", height=PANEL_H),
+                    use_container_width=True,
+                )
 
