@@ -15,8 +15,14 @@ ICO_PATH = SOURCES_DIR / "ico_exports.parquet"
 @st.cache_data
 def load_tdm_brazil():
     """Brazil green-bean exports from TDM's bilateral trade-flow data,
-    summed across all partner countries. TDM's GBE (green bean equivalent)
-    is in metric tons — converted to K 60kg bags via GBE * 1000 / 60 / 1000.
+    summed across all partner countries. Uses raw QTY1 (metric tons),
+    NOT TDM's GBE column — GBE is just QTY1 * 1.05 (a flat, constant
+    multiplier confirmed across every row), which on its own accounts for
+    most of a persistent ~5% gap vs CECAFE that never reverted (unlike
+    Comexstat, which oscillates around 0% against CECAFE). Raw QTY1 brings
+    TDM's average gap down from +5.6% to +1.1% and restores sign-flipping
+    like the other sources, so this is the apples-to-apples comparison.
+    Converted to K 60kg bags via QTY1 * 1000 / 60 / 1000 = QTY1 / 60.
 
     TDM occasionally has a single-partner reporting anomaly (e.g.
     Brazil->Germany, Jan 2015, where Germany alone was 52% of that month's
@@ -28,7 +34,7 @@ def load_tdm_brazil():
     df = pd.read_parquet(TDM_PATH)
     df["Date"] = pd.to_datetime(dict(year=df.Year, month=df.Month, day=1))
     df = df.sort_values("Date").reset_index(drop=True)
-    df["Bags (K)"] = df["GBE"] / 60.0
+    df["Bags (K)"] = df["QTY1"] / 60.0
 
     rolling_med = df["Bags (K)"].rolling(5, center=True, min_periods=3).median()
     is_outlier = df["Bags (K)"] > rolling_med * 1.5
