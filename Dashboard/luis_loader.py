@@ -94,7 +94,7 @@ def granger_scan(exog_col, maxlag=MAX_LAG, share_col="RobustaSharePct"):
         "dExog": np.log(m[exog_col]).diff(),
     }).dropna()
 
-    res = grangercausalitytests(d[["dShare", "dExog"]], maxlag=maxlag, verbose=False)
+    res = grangercausalitytests(d[["dShare", "dExog"]], maxlag=maxlag)
     rows = [{"Lag": lag, "PValue": res[lag][0]["ssr_ftest"][1]} for lag in range(1, maxlag + 1)]
     return pd.DataFrame(rows)
 
@@ -124,7 +124,7 @@ def granger_scan_volume(type_, maxlag=MAX_LAG):
         "dPrice": np.log(m["Price"]).diff(),
     }).dropna()
 
-    res = grangercausalitytests(d[["dVol", "dPrice"]], maxlag=maxlag, verbose=False)
+    res = grangercausalitytests(d[["dVol", "dPrice"]], maxlag=maxlag)
     rows = [{"Lag": lag, "PValue": res[lag][0]["ssr_ftest"][1]} for lag in range(1, maxlag + 1)]
     return pd.DataFrame(rows)
 
