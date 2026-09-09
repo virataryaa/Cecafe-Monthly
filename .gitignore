@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 *.log
 .streamlit/secrets.toml
+Database/Comexstat/comexstat_coffee_exports.csv
