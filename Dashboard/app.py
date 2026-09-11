@@ -114,26 +114,27 @@ def render_single(type_, destination):
             use_container_width=True,
         )
 
-    ctl_win, ctl_unit, _ = st.columns([2, 1, 2])
-    with ctl_win:
-        tw = st.radio("Trailing window", TRAILING_WINDOWS, index=1, horizontal=True,
-                       format_func=lambda m: f"{m} Months",
-                       key=f"trailing_window_{type_}_{destination}")
-    with ctl_unit:
-        unit_sel = st.radio("Units", EXCESS_UNITS, index=0, horizontal=True,
-                             key=f"trailing_unit_{type_}_{destination}")
-    trail = trailing_excess_series(df, type_, destination, window=tw)
-    if trail.empty or trail["Baseline"].notna().sum() == 0:
-        st.info("Not enough history for a trailing baseline at this window.")
-    else:
-        st.plotly_chart(
-            trailing_excess_panel(trail, title=f"{lbl} · {destination} — Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw, unit=unit_sel),
-            use_container_width=True,
-        )
-        st.caption(
-            f"Baseline is the average of the {tw} months before each month. "
-            f"Lower panel is the gap between actual and that baseline, in {unit_sel.lower()}."
-        )
+    with st.expander("Monthly Excess vs Trailing Average", expanded=False):
+        ctl_win, ctl_unit, _ = st.columns([2, 1, 2])
+        with ctl_win:
+            tw = st.radio("Trailing window", TRAILING_WINDOWS, index=1, horizontal=True,
+                           format_func=lambda m: f"{m} Months",
+                           key=f"trailing_window_{type_}_{destination}")
+        with ctl_unit:
+            unit_sel = st.radio("Units", EXCESS_UNITS, index=0, horizontal=True,
+                                 key=f"trailing_unit_{type_}_{destination}")
+        trail = trailing_excess_series(df, type_, destination, window=tw)
+        if trail.empty or trail["Baseline"].notna().sum() == 0:
+            st.info("Not enough history for a trailing baseline at this window.")
+        else:
+            st.plotly_chart(
+                trailing_excess_panel(trail, title=f"{lbl} · {destination} — Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw, unit=unit_sel),
+                use_container_width=True,
+            )
+            st.caption(
+                f"Baseline is the average of the {tw} months before each month. "
+                f"Lower panel is the gap between actual and that baseline, in {unit_sel.lower()}."
+            )
 
     bottom_cols = st.columns([1, 3])
     with bottom_cols[0]:
