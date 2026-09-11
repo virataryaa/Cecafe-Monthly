@@ -7,13 +7,14 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
                           robusta_share_series, monthly_type_mix, ytd_period_window,
                           month_options, month_label, crop_years_overlapping_months,
                           excess_rows, bags_per_lot, baseline_caption, BASELINE_METHODS,
+                          trailing_excess_series, TRAILING_WINDOWS,
                           TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
                      price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, multi_bar,
-                     signed_bar, SERIES)
+                     signed_bar, trailing_excess_panel, SERIES)
 from table_html import (seasonal_table_html, summary_table_html, overview_table_html,
                          excess_table_html)
 import luis_loader as pi
@@ -113,15 +114,23 @@ def render_single(type_, destination):
             use_container_width=True,
         )
 
-    long_run = long_run_series(df, type_, destination)
-    window = st.radio("Rolling window", [1, 3, 6, 12], index=3, horizontal=True,
-                       format_func=lambda m: f"{m} Month" if m == 1 else f"{m} Months",
-                       key=f"rolling_window_{type_}_{destination}", label_visibility="collapsed")
-    st.plotly_chart(
-        rolling_12m_line(long_run["Date"], long_run["Bags (K)"],
-                          title=f"Rolling {window}-Month Total", height=PANEL_H, window=window),
-        use_container_width=True,
-    )
+    tw = st.radio("Trailing window", TRAILING_WINDOWS, index=1, horizontal=True,
+                   format_func=lambda m: f"{m} Months",
+                   key=f"trailing_window_{type_}_{destination}", label_visibility="collapsed")
+    trail = trailing_excess_series(df, type_, destination, window=tw)
+    if trail.empty or trail["Baseline"].notna().sum() == 0:
+        st.info("Not enough history for a trailing baseline at this window.")
+    else:
+        st.plotly_chart(
+            trailing_excess_panel(trail, title=f"Monthly Exports vs Seasonally Adjusted Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw),
+            use_container_width=True,
+        )
+        st.caption(
+            f"Baseline is the trailing {tw}-month average scaled by that month's seasonal "
+            "index, so a seasonally heavy month is not flagged as excess by default. "
+            "Lower panel is the gap in exchange lots; the line is its running total since "
+            "the crop year began."
+        )
 
     bottom_cols = st.columns([1, 3])
     with bottom_cols[0]:
