@@ -338,52 +338,27 @@ def excess_rows(df, type_, year, month, method):
 TRAILING_WINDOWS = [6, 12, 24]
 
 
-def _seasonal_index(series, ref_years=10):
-    """Each calendar month's average share of its year's total, rescaled so the
-    twelve months average 1.0. A flat trailing average is not a fair yardstick
-    for a seasonal flow — Robusta ships ~43% above its annual average every
-    August — so the baseline is multiplied by this to make the comparison
-    month-appropriate. Built only from complete calendar years, so the current
-    partial year can't skew the shape toward the months it happens to cover."""
-    counts = series.groupby("Year")["Bags (K)"].count()
-    totals = series.groupby("Year")["Bags (K)"].sum()
-    complete = sorted(y for y in counts.index if counts[y] == 12 and totals[y] > 0)
-    use = complete[-ref_years:]
-    if not use:
-        return {m: 1.0 for m in range(1, 13)}
-    win = series[series["Year"].isin(use)].copy()
-    win["share"] = win["Bags (K)"] / win["Year"].map(totals)
-    idx = win.groupby("Month")["share"].mean() * 12
-    mean = idx.mean()
-    if mean:
-        idx = idx / mean
-    return {m: float(idx.get(m, 1.0)) for m in range(1, 13)}
-
-
-def _excess_frame(df, type_, destination, window, ref_years):
+def _excess_frame(df, type_, destination, window):
     s = long_run_series(df, type_, destination).copy()
     if s.empty:
-        return s.assign(Year=[], Month=[], Trailing=[], Baseline=[], Excess=[])
+        return s.assign(Year=[], Month=[], Baseline=[], Excess=[])
     s["Year"] = s["Date"].dt.year
     s["Month"] = s["Date"].dt.month
-    idx = _seasonal_index(s, ref_years)
     # shift(1) so the baseline is what was normal *going into* the month, never
     # contaminated by the month being judged.
-    s["Trailing"] = s["Bags (K)"].shift(1).rolling(window, min_periods=window).mean()
-    s["Baseline"] = s["Trailing"] * s["Month"].map(idx)
+    s["Baseline"] = s["Bags (K)"].shift(1).rolling(window, min_periods=window).mean()
     s["Excess"] = s["Bags (K)"] - s["Baseline"]
     return s
 
 
-def trailing_excess_series(df, type_, destination, window=12, months=36, ref_years=10):
-    """Monthly actual against a seasonally adjusted trailing baseline, with the
-    gap expressed in lots and accumulated across the crop year. Unlike the
-    single-month table this shows *when* a build started, not just that the
-    latest month is high.
+def trailing_excess_series(df, type_, destination, window=12, months=36):
+    """Monthly actual against a trailing N-month average, with the gap expressed
+    in exchange lots. Unlike the single-month table this shows *when* a build
+    started, not just that the latest month is high.
 
     For Arabica + Robusta combined the lot conversion is done per type before
     summing, since a KC lot (283.5 bags) and an RC lot (166.67) differ."""
-    base = _excess_frame(df, type_, destination, window, ref_years)
+    base = _excess_frame(df, type_, destination, window)
     if base.empty:
         return base
 
@@ -391,7 +366,7 @@ def trailing_excess_series(df, type_, destination, window=12, months=36, ref_yea
     if type_ == ALL_TYPES:
         lots = pd.Series(0.0, index=base.index)
         for t in BAGS_PER_LOT:
-            part = _excess_frame(df, t, destination, window, ref_years)
+            part = _excess_frame(df, t, destination, window)
             if part.empty:
                 continue
             part = part.set_index("Date")
@@ -400,7 +375,4 @@ def trailing_excess_series(df, type_, destination, window=12, months=36, ref_yea
     else:
         base["Lots"] = base["Excess"] * 1000 / BAGS_PER_LOT[type_]
 
-    base = base.reset_index()
-    base["CropStart"] = [y if m >= 7 else y - 1 for y, m in zip(base["Year"], base["Month"])]
-    base["CumLots"] = base.groupby("CropStart")["Lots"].cumsum()
-    return base.tail(months).reset_index(drop=True)
+    return base.reset_index().tail(months).reset_index(drop=True)

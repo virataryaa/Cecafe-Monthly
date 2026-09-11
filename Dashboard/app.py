@@ -122,14 +122,12 @@ def render_single(type_, destination):
         st.info("Not enough history for a trailing baseline at this window.")
     else:
         st.plotly_chart(
-            trailing_excess_panel(trail, title=f"Monthly Exports vs Seasonally Adjusted Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw),
+            trailing_excess_panel(trail, title=f"Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw),
             use_container_width=True,
         )
         st.caption(
-            f"Baseline is the trailing {tw}-month average scaled by that month's seasonal "
-            "index, so a seasonally heavy month is not flagged as excess by default. "
-            "Lower panel is the gap in exchange lots; the line is its running total since "
-            "the crop year began."
+            f"Baseline is the average of the {tw} months before each month. "
+            "Lower panel is the gap between actual and that baseline, in exchange lots."
         )
 
     bottom_cols = st.columns([1, 3])

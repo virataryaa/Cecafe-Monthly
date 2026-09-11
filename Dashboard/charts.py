@@ -685,26 +685,17 @@ def ytd_comparison(df_wide, year_cols, kind="flow", title=None, height=None):
     return fig
 
 
-def trailing_excess_panel(frame, title, height=None, window=12, yaxis_title="K bags",
-                           show_cum=True):
+def trailing_excess_panel(frame, title, height=None, window=12, yaxis_title="K bags"):
     """Two stacked panels on one time axis: monthly actual as bars against the
-    seasonally adjusted trailing baseline (with the raw trailing average shown
-    faint behind it, so the size of the seasonal correction is visible), and
-    the gap itself as signed bars in lots underneath.
-
-    The cumulative line is the crop-year running total of that gap — the figure
-    that maps to potential certified stock, rather than a single month's spike."""
+    trailing N-month average on top, and the gap itself as signed bars in
+    exchange lots underneath."""
     dates = frame["Date"]
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.64, 0.36],
-                        vertical_spacing=0.07,
-                        specs=[[{"secondary_y": False}], [{"secondary_y": True}]])
+                        vertical_spacing=0.07)
 
     fig.add_trace(go.Bar(x=dates, y=frame["Bags (K)"], name="Actual",
                          marker=dict(color=NAVY_SOFT, opacity=0.55)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=dates, y=frame["Trailing"], name=f"Trailing {window}m (raw)",
-                             mode="lines", connectgaps=True,
-                             line=dict(width=1.5, color=MUTED, dash="dot")), row=1, col=1)
-    fig.add_trace(go.Scatter(x=dates, y=frame["Baseline"], name=f"Trailing {window}m (seasonal)",
+    fig.add_trace(go.Scatter(x=dates, y=frame["Baseline"], name=f"Trailing {window}m average",
                              mode="lines", connectgaps=True,
                              line=dict(width=2.5, color=INK)), row=1, col=1)
 
@@ -713,22 +704,12 @@ def trailing_excess_panel(frame, title, height=None, window=12, yaxis_title="K b
                          marker=dict(color=[GOOD if (pd.notna(v) and v >= 0) else CRITICAL
                                             for v in lots])),
                   row=2, col=1)
-    if show_cum:
-        fig.add_trace(go.Scatter(x=dates, y=frame["CumLots"], name="Cumulative (crop year)",
-                                 mode="lines", connectgaps=True,
-                                 line=dict(width=2, color=SERIES["violet"])),
-                      row=2, col=1, secondary_y=True)
 
     layout = _layout(title, height)
     layout["yaxis"]["title"] = yaxis_title
-    axis_style = dict(gridcolor=GRID, linecolor=GRID, tickfont=dict(color=MUTED),
-                      tickformat=",.0f")
     layout["xaxis2"] = dict(gridcolor=GRID, linecolor=GRID, tickfont=dict(color=MUTED))
-    layout["yaxis2"] = dict(title="Excess (lots)", zeroline=True, zerolinecolor=GRID,
-                            zerolinewidth=1, **axis_style)
-    if show_cum:
-        layout["yaxis3"] = dict(title="Cum. lots", overlaying="y2", side="right",
-                                showgrid=False, linecolor=GRID,
-                                tickfont=dict(color=SERIES["violet"]), tickformat=",.0f")
+    layout["yaxis2"] = dict(title="Excess (lots)", gridcolor=GRID, linecolor=GRID,
+                            tickfont=dict(color=MUTED), tickformat=",.0f",
+                            zeroline=True, zerolinecolor=GRID, zerolinewidth=1)
     fig.update_layout(barmode="relative", bargap=0.25, **layout)
     return fig
