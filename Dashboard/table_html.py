@@ -249,3 +249,52 @@ def seasonal_table_html(df_wide, year_cols, title, unit="", kind="flow",
     </div>
     """
     return _flatten(html)
+
+
+def excess_table_html(rows, totals, title, subtitle=""):
+    """Destination x (actual, baseline, excess) for one Type and month.
+    Excess is shown in K bags and in exchange lots; the % column is the excess
+    as a share of the baseline, so a small hub's outsized move still reads."""
+    header = (
+        '<th class="product-col">Destination</th>'
+        '<th>Actual (k bags)</th><th>Normal (k bags)</th>'
+        '<th>Excess (k bags)</th><th>Excess (lots)</th><th>vs Normal</th>'
+    )
+
+    def _row(r, cls=""):
+        excess = r["excess"]
+        if pd.isna(excess):
+            ex_cell = lot_cell = ""
+        else:
+            color = CRITICAL if excess < 0 else GOOD
+            ex_cell = f'<span style="color:{color};font-weight:700;">{excess:+,.0f}</span>'
+            lot_cell = f'<span style="color:{color};font-weight:700;">{r["lots"]:+,.0f}</span>'
+        actual = "" if pd.isna(r["actual"]) else f'{r["actual"]:,.0f}'
+        base = "" if pd.isna(r["baseline"]) else f'{r["baseline"]:,.0f}'
+        bar = _bar_cell(r["pct"], scale=100, height=16, font_size=9) if r["pct"] is not None else ""
+        return (
+            f'<tr class="{cls}"><td class="product-col">{r["name"]}</td>'
+            f'<td class="latest-col">{actual}</td><td class="prev-col">{base}</td>'
+            f'<td>{ex_cell}</td><td>{lot_cell}</td>'
+            f'<td class="bar-cell">{bar}</td></tr>'
+        )
+
+    body = "".join(_row(r) for r in rows) + "".join(_row(t, "total-row") for t in totals)
+    sub = (f'<div style="font-size:11px;color:{MUTED};padding:0 16px 10px;">{subtitle}</div>'
+           if subtitle else "")
+
+    return _flatten(f"""
+    {_OVERVIEW_STYLE}
+    <style>
+    .unica-overview-table tr.total-row td {{ font-weight: 700; border-top: 2px solid {INK};
+                                              background: #fafaf8; }}
+    </style>
+    <div class="unica-overview-wrap">
+    <div class="unica-overview-title">{title}</div>
+    {sub}
+    <table class="unica-overview-table">
+      <thead><tr>{header}</tr></thead>
+      <tbody>{body}</tbody>
+    </table>
+    </div>
+    """)

@@ -6,6 +6,7 @@ from data_loader import (load_raw, types, destinations_for_type, types_traded, y
                           destination_mix, destination_month_matrix, long_run_series,
                           robusta_share_series, monthly_type_mix, ytd_period_window,
                           month_options, month_label, crop_years_overlapping_months,
+                          excess_rows, bags_per_lot, baseline_caption, BASELINE_METHODS,
                           TOTAL, ALL_TYPES, EUROPE_LABEL)
 from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summary_table,
                      ytd_comparison, compare_series, pie_breakdown, ranking_bar,
@@ -13,7 +14,8 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      scatter_with_trend, price_share_combined,
                      price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, multi_bar,
                      signed_bar, SERIES)
-from table_html import seasonal_table_html, summary_table_html, overview_table_html
+from table_html import (seasonal_table_html, summary_table_html, overview_table_html,
+                         excess_table_html)
 import luis_loader as pi
 import economics_loader as econ
 import comexstat_loader as cx
@@ -221,6 +223,49 @@ with tab_detail:
         render_single(type_, destination[0])
     else:
         render_compare(type_, destination)
+
+    st.write("")
+    with st.expander("Excess Shipments vs Normal — potential certified stock grading", expanded=False):
+        st.markdown(
+            '<div class="card-desc">Actual shipments minus a normal baseline, per destination, for a '
+            'single month. Positive excess is tonnage arriving above what that destination usually '
+            'takes — a candidate for grading against certified stocks. Shown in K bags and in exchange '
+            'lots (Arabica 283.5 bags/lot on KC, Robusta 166.7 bags/lot on RC).</div>',
+            unsafe_allow_html=True,
+        )
+
+        ex_cols = st.columns([2, 3])
+        all_months = month_options(df)
+        all_month_labels = [month_label(m) for m in all_months]
+        with ex_cols[0]:
+            sel_month_lbl = st.selectbox("Month", all_month_labels,
+                                          index=len(all_month_labels) - 1, key="excess_month")
+        with ex_cols[1]:
+            baseline_method = st.radio("Baseline", BASELINE_METHODS, index=3, horizontal=True,
+                                        key="excess_baseline")
+        sel_year, sel_month = all_months[all_month_labels.index(sel_month_lbl)]
+        st.caption(baseline_caption(baseline_method))
+
+        for ex_type in ["Arabica", "Robusta"]:
+            rows, totals = excess_rows(df, ex_type, sel_year, sel_month, baseline_method)
+            if not rows:
+                continue
+            st.markdown(
+                excess_table_html(
+                    rows, totals,
+                    f"{ex_type} — Excess vs {baseline_method} Normal &middot; {sel_month_lbl}",
+                    subtitle=f"{bags_per_lot(ex_type):,.1f} bags per lot",
+                ),
+                unsafe_allow_html=True,
+            )
+            plotted = [r for r in rows if pd.notna(r["lots"])]
+            if plotted:
+                st.plotly_chart(
+                    signed_bar([r["name"] for r in plotted], [r["lots"] for r in plotted],
+                               f"{ex_type} — Excess by Destination ({sel_month_lbl})",
+                               height=PANEL_H, yaxis_title="Lots"),
+                    use_container_width=True,
+                )
 
 
 with tab_insights:

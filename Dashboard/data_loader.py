@@ -256,3 +256,80 @@ def monthly_type_mix(df, destination, crop_years=None):
     total = pivot["Arabica"] + pivot["Robusta"]
     pivot["RobustaSharePct"] = (pivot["Robusta"] / total * 100).where(total > 0)
     return pivot[["Date", "Arabica", "Robusta", "RobustaSharePct"]]
+
+
+# --- Excess vs normal shipments (potential certified-stock grading) -----------
+# Lots are exchange contract size / bag weight:
+#   Arabica  KC (ICE US):     37,500 lb / 132.277 lb per 60kg bag = 283.5 bags
+#   Robusta  RC (ICE Europe): 10 tonnes / 60 kg                   = 166.67 bags
+BAGS_PER_LOT = {"Arabica": 283.5, "Robusta": 10_000 / 60}
+
+BASELINE_METHODS = ["6M", "1Y", "3Y", "5Y"]
+
+
+def bags_per_lot(type_):
+    return BAGS_PER_LOT.get(type_)
+
+
+def baseline_caption(method):
+    if method == "6M":
+        return "Baseline = average of the 6 months immediately before the selected month."
+    n = {"1Y": 1, "3Y": 3, "5Y": 5}[method]
+    span = "year" if n == 1 else f"{n} years"
+    return f"Baseline = average of the same calendar month over the prior {span}."
+
+
+def _baseline_value(sub, year, month, method):
+    """Normal level for one Type/Destination at (year, month).
+    6M is a trailing average of the preceding six months; 1Y/3Y/5Y average the
+    same calendar month across prior years, so the seasonal shape is preserved."""
+    if method == "6M":
+        key = sub["Year"] * 12 + sub["Month"]
+        cur = year * 12 + month
+        win = sub[(key < cur) & (key >= cur - 6)]
+    else:
+        n = {"1Y": 1, "3Y": 3, "5Y": 5}[method]
+        win = sub[(sub["Month"] == month) & (sub["Year"] < year) & (sub["Year"] >= year - n)]
+    vals = win["Bags (K)"].dropna()
+    return float(vals.mean()) if not vals.empty else float("nan")
+
+
+def _excess_row(name, actual, base, per_lot):
+    excess = actual - base if pd.notna(actual) and pd.notna(base) else float("nan")
+    pct = (excess / base * 100) if pd.notna(excess) and base else None
+    lots = (excess * 1000 / per_lot) if pd.notna(excess) else float("nan")
+    return {"name": name, "actual": actual, "baseline": base,
+            "excess": excess, "lots": lots, "pct": pct}
+
+
+def excess_rows(df, type_, year, month, method):
+    """Actual minus normal baseline for every destination of one Type in a given
+    month, in K bags and in exchange lots. Same method for Arabica and Robusta;
+    only the bags-per-lot divisor differs. Europe is appended as a net row so a
+    hub's 'excess' that is really a neighbour's shortfall (discharge-port
+    switching) is visible rather than double-counted."""
+    per_lot = BAGS_PER_LOT[type_]
+    typed = df[(df["Type"] == type_) & df["Bags (K)"].notna()]
+    dests = [d for d in sorted(typed["Destination"].unique()) if d != TOTAL]
+
+    rows = []
+    for d in dests:
+        sub = typed[typed["Destination"] == d]
+        cur = sub[(sub["Year"] == year) & (sub["Month"] == month)]["Bags (K)"]
+        actual = float(cur.iloc[0]) if not cur.empty else float("nan")
+        rows.append(_excess_row(d, actual, _baseline_value(sub, year, month, method), per_lot))
+
+    rows.sort(key=lambda r: (r["excess"] if pd.notna(r["excess"]) else float("-inf")), reverse=True)
+
+    europe = [r for r in rows if r["name"] in EUROPE_MEMBERS]
+    totals = []
+    if europe:
+        totals.append(_excess_row(EUROPE_LABEL,
+                                  sum(r["actual"] for r in europe if pd.notna(r["actual"])),
+                                  sum(r["baseline"] for r in europe if pd.notna(r["baseline"])),
+                                  per_lot))
+    totals.append(_excess_row("All destinations",
+                             sum(r["actual"] for r in rows if pd.notna(r["actual"])),
+                             sum(r["baseline"] for r in rows if pd.notna(r["baseline"])),
+                             per_lot))
+    return rows, totals
