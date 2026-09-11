@@ -209,22 +209,6 @@ def render_compare(type_, dests):
 
 
 with tab_detail:
-    col_type, col_dest, _ = st.columns([1, 2, 2])
-    with col_type:
-        type_ = st.selectbox("Type", TYPES, key="slicer_type")
-    dest_options = destinations_for_type(df, type_) + [EUROPE_LABEL, TOTAL]
-    with col_dest:
-        destination = st.multiselect("Destination", dest_options, default=[dest_options[0]],
-                                      key=f"slicer_destination_{type_}")
-
-    if not destination:
-        st.info("Select at least one destination.")
-    elif len(destination) == 1:
-        render_single(type_, destination[0])
-    else:
-        render_compare(type_, destination)
-
-    st.write("")
     with st.expander("Excess Shipments vs Normal", expanded=False):
 
         ex_cols = st.columns([2, 3])
@@ -259,6 +243,22 @@ with tab_detail:
                                height=PANEL_H, yaxis_title="Lots"),
                     use_container_width=True,
                 )
+
+    st.write("")
+    col_type, col_dest, _ = st.columns([1, 2, 2])
+    with col_type:
+        type_ = st.selectbox("Type", TYPES, key="slicer_type")
+    dest_options = destinations_for_type(df, type_) + [EUROPE_LABEL, TOTAL]
+    with col_dest:
+        destination = st.multiselect("Destination", dest_options, default=[dest_options[0]],
+                                      key=f"slicer_destination_{type_}")
+
+    if not destination:
+        st.info("Select at least one destination.")
+    elif len(destination) == 1:
+        render_single(type_, destination[0])
+    else:
+        render_compare(type_, destination)
 
 
 with tab_insights:
