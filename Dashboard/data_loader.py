@@ -352,27 +352,31 @@ def _excess_frame(df, type_, destination, window):
 
 
 def trailing_excess_series(df, type_, destination, window=12, months=36):
-    """Monthly actual against a trailing N-month average, with the gap expressed
-    in exchange lots. Unlike the single-month table this shows *when* a build
+    """Monthly actual against a trailing N-month average, in K bags and in
+    exchange lots. Unlike the single-month table this shows *when* a build
     started, not just that the latest month is high.
 
-    For Arabica + Robusta combined the lot conversion is done per type before
-    summing, since a KC lot (283.5 bags) and an RC lot (166.67) differ."""
+    For Arabica + Robusta combined every lot figure is converted per type
+    before summing, since a KC lot (283.5 bags) and an RC lot (166.67) differ —
+    so the lots view is not simply the bags view rescaled."""
     base = _excess_frame(df, type_, destination, window)
     if base.empty:
         return base
 
     base = base.set_index("Date")
+    cols = {"Bags (K)": "ActualLots", "Baseline": "BaselineLots", "Excess": "Lots"}
     if type_ == ALL_TYPES:
-        lots = pd.Series(0.0, index=base.index)
-        for t in BAGS_PER_LOT:
-            part = _excess_frame(df, t, destination, window)
-            if part.empty:
-                continue
-            part = part.set_index("Date")
-            lots = lots.add(part["Excess"] * 1000 / BAGS_PER_LOT[t], fill_value=0.0)
-        base["Lots"] = lots.reindex(base.index)
+        parts = {t: _excess_frame(df, t, destination, window).set_index("Date")
+                 for t in BAGS_PER_LOT}
+        for src, dest_col in cols.items():
+            acc = pd.Series(0.0, index=base.index)
+            for t, part in parts.items():
+                if part.empty:
+                    continue
+                acc = acc.add(part[src] * 1000 / BAGS_PER_LOT[t], fill_value=0.0)
+            base[dest_col] = acc.reindex(base.index)
     else:
-        base["Lots"] = base["Excess"] * 1000 / BAGS_PER_LOT[type_]
+        for src, dest_col in cols.items():
+            base[dest_col] = base[src] * 1000 / BAGS_PER_LOT[type_]
 
     return base.reset_index().tail(months).reset_index(drop=True)

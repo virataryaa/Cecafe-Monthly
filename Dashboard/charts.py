@@ -685,30 +685,35 @@ def ytd_comparison(df_wide, year_cols, kind="flow", title=None, height=None):
     return fig
 
 
-def trailing_excess_panel(frame, title, height=None, window=12, yaxis_title="K bags"):
+EXCESS_UNITS = ["K bags", "Lots"]
+
+
+def trailing_excess_panel(frame, title, height=None, window=12, unit="K bags"):
     """Two stacked panels on one time axis: monthly actual as bars against the
-    trailing N-month average on top, and the gap itself as signed bars in
-    exchange lots underneath."""
+    trailing N-month average on top, and the gap itself as signed bars
+    underneath. Both panels follow the same unit."""
+    lots = unit == "Lots"
+    actual_col, base_col, gap_col = (("ActualLots", "BaselineLots", "Lots") if lots
+                                     else ("Bags (K)", "Baseline", "Excess"))
+    gap = frame[gap_col]
     dates = frame["Date"]
+
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.64, 0.36],
                         vertical_spacing=0.07)
-
-    fig.add_trace(go.Bar(x=dates, y=frame["Bags (K)"], name="Actual",
+    fig.add_trace(go.Bar(x=dates, y=frame[actual_col], name="Actual",
                          marker=dict(color=NAVY_SOFT, opacity=0.55)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=dates, y=frame["Baseline"], name=f"Trailing {window}m average",
+    fig.add_trace(go.Scatter(x=dates, y=frame[base_col], name=f"Trailing {window}m average",
                              mode="lines", connectgaps=True,
                              line=dict(width=2.5, color=INK)), row=1, col=1)
-
-    lots = frame["Lots"]
-    fig.add_trace(go.Bar(x=dates, y=lots, name="Excess (lots)",
+    fig.add_trace(go.Bar(x=dates, y=gap, name=f"Excess ({unit.lower()})",
                          marker=dict(color=[GOOD if (pd.notna(v) and v >= 0) else CRITICAL
-                                            for v in lots])),
+                                            for v in gap])),
                   row=2, col=1)
 
     layout = _layout(title, height)
-    layout["yaxis"]["title"] = yaxis_title
+    layout["yaxis"]["title"] = unit
     layout["xaxis2"] = dict(gridcolor=GRID, linecolor=GRID, tickfont=dict(color=MUTED))
-    layout["yaxis2"] = dict(title="Excess (lots)", gridcolor=GRID, linecolor=GRID,
+    layout["yaxis2"] = dict(title=f"Excess ({unit.lower()})", gridcolor=GRID, linecolor=GRID,
                             tickfont=dict(color=MUTED), tickformat=",.0f",
                             zeroline=True, zerolinecolor=GRID, zerolinewidth=1)
     fig.update_layout(barmode="relative", bargap=0.25, **layout)

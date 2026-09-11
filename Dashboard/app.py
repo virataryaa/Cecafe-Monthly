@@ -14,7 +14,7 @@ from charts import (monthly_comparison, cumulative_forecast, min_max_avg, summar
                      destination_heatmap, long_run_line, rolling_12m_line, share_line, monthly_mix_bars,
                      scatter_with_trend, price_share_combined,
                      price_volume_combined, granger_pvalue_bar, stacked_bars, multi_line, multi_bar,
-                     signed_bar, trailing_excess_panel, SERIES)
+                     signed_bar, trailing_excess_panel, EXCESS_UNITS, SERIES)
 from table_html import (seasonal_table_html, summary_table_html, overview_table_html,
                          excess_table_html)
 import luis_loader as pi
@@ -114,20 +114,25 @@ def render_single(type_, destination):
             use_container_width=True,
         )
 
-    tw = st.radio("Trailing window", TRAILING_WINDOWS, index=1, horizontal=True,
-                   format_func=lambda m: f"{m} Months",
-                   key=f"trailing_window_{type_}_{destination}", label_visibility="collapsed")
+    ctl_win, ctl_unit, _ = st.columns([2, 1, 2])
+    with ctl_win:
+        tw = st.radio("Trailing window", TRAILING_WINDOWS, index=1, horizontal=True,
+                       format_func=lambda m: f"{m} Months",
+                       key=f"trailing_window_{type_}_{destination}")
+    with ctl_unit:
+        unit_sel = st.radio("Units", EXCESS_UNITS, index=0, horizontal=True,
+                             key=f"trailing_unit_{type_}_{destination}")
     trail = trailing_excess_series(df, type_, destination, window=tw)
     if trail.empty or trail["Baseline"].notna().sum() == 0:
         st.info("Not enough history for a trailing baseline at this window.")
     else:
         st.plotly_chart(
-            trailing_excess_panel(trail, title=f"Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw),
+            trailing_excess_panel(trail, title=f"Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw, unit=unit_sel),
             use_container_width=True,
         )
         st.caption(
             f"Baseline is the average of the {tw} months before each month. "
-            "Lower panel is the gap between actual and that baseline, in exchange lots."
+            f"Lower panel is the gap between actual and that baseline, in {unit_sel.lower()}."
         )
 
     bottom_cols = st.columns([1, 3])
