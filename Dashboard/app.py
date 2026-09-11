@@ -226,13 +226,6 @@ with tab_detail:
 
     st.write("")
     with st.expander("Excess Shipments vs Normal — potential certified stock grading", expanded=False):
-        st.markdown(
-            '<div class="card-desc">Actual shipments minus a normal baseline, per destination, for a '
-            'single month. Positive excess is tonnage arriving above what that destination usually '
-            'takes — a candidate for grading against certified stocks. Shown in K bags and in exchange '
-            'lots (Arabica 283.5 bags/lot on KC, Robusta 166.7 bags/lot on RC).</div>',
-            unsafe_allow_html=True,
-        )
 
         ex_cols = st.columns([2, 3])
         all_months = month_options(df)

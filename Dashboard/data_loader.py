@@ -264,7 +264,7 @@ def monthly_type_mix(df, destination, crop_years=None):
 #   Robusta  RC (ICE Europe): 10 tonnes / 60 kg                   = 166.67 bags
 BAGS_PER_LOT = {"Arabica": 283.5, "Robusta": 10_000 / 60}
 
-BASELINE_METHODS = ["6M", "1Y", "3Y", "5Y"]
+BASELINE_METHODS = ["6M", "1Y", "3Y", "5Y", "10Y"]
 
 
 def bags_per_lot(type_):
@@ -274,7 +274,7 @@ def bags_per_lot(type_):
 def baseline_caption(method):
     if method == "6M":
         return "Baseline = average of the 6 months immediately before the selected month."
-    n = {"1Y": 1, "3Y": 3, "5Y": 5}[method]
+    n = {"1Y": 1, "3Y": 3, "5Y": 5, "10Y": 10}[method]
     span = "year" if n == 1 else f"{n} years"
     return f"Baseline = average of the same calendar month over the prior {span}."
 
@@ -288,7 +288,7 @@ def _baseline_value(sub, year, month, method):
         cur = year * 12 + month
         win = sub[(key < cur) & (key >= cur - 6)]
     else:
-        n = {"1Y": 1, "3Y": 3, "5Y": 5}[method]
+        n = {"1Y": 1, "3Y": 3, "5Y": 5, "10Y": 10}[method]
         win = sub[(sub["Month"] == month) & (sub["Year"] < year) & (sub["Year"] >= year - n)]
     vals = win["Bags (K)"].dropna()
     return float(vals.mean()) if not vals.empty else float("nan")
