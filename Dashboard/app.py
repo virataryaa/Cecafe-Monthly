@@ -127,7 +127,7 @@ def render_single(type_, destination):
         st.info("Not enough history for a trailing baseline at this window.")
     else:
         st.plotly_chart(
-            trailing_excess_panel(trail, title=f"Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw, unit=unit_sel),
+            trailing_excess_panel(trail, title=f"{lbl} · {destination} — Monthly Exports vs Trailing {tw}-Month Average", height=2 * PANEL_H, window=tw, unit=unit_sel),
             use_container_width=True,
         )
         st.caption(
