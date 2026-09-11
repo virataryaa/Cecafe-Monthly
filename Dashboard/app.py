@@ -225,7 +225,7 @@ with tab_detail:
         render_compare(type_, destination)
 
     st.write("")
-    with st.expander("Excess Shipments vs Normal — potential certified stock grading", expanded=False):
+    with st.expander("Excess Shipments vs Normal", expanded=False):
 
         ex_cols = st.columns([2, 3])
         all_months = month_options(df)
